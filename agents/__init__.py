@@ -3,11 +3,11 @@ from abc import abstractmethod
 
 class Agent:
     @abstractmethod
-    def act(self, *args):
+    def act(self, state):
         pass
 
     @abstractmethod
-    def store_transition(self, *args):
+    def store_transition(self, state, new_state, action, a_prob, reward):
         pass
 
     @abstractmethod
