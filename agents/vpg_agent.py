@@ -60,6 +60,7 @@ class VPGAgent(Agent):
         rewards = rewards.reshape(-1, 1)
 
         losses = []
+        entropies = []
 
         for batch in BatchSampler(SubsetRandomSampler(range(len(self.states))), batch_size, drop_last=False):
             states_batch = states[batch].numpy().reshape((self.state_space, -1))
@@ -67,12 +68,14 @@ class VPGAgent(Agent):
             actions_batch = actions[batch].numpy()
             probs = np.take_along_axis(probs, actions_batch, axis=0)
             loss = -(np.log(probs) * rewards[batch])
+            entropy = -np.sum(np.log(probs + 1e-8)*probs)
             dLoss = -1/probs * rewards[batch]
             self.net.train(states_batch, loss, dLoss, epochs=1, learning_rate=self.lr, actions=actions_batch)
             losses.append(loss)
+            entropies.append(entropy)
         self._clear_buffers()
 
-        return np.mean(losses)
+        return np.mean(losses), np.mean(entropies)
 
     def _clear_buffers(self):
         self.states = []

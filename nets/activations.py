@@ -69,10 +69,12 @@ def softmax_backward(dA, z, action):
     """
     z = z.reshape(1, -1).squeeze()
     action = action.squeeze()
-
-    dZAction = dA * z[action] * (1 - z[action])
     dZ = np.zeros(len(z))
-    dZ[action] = dZAction
+    for j in range(len(z)):
+        if j == action:
+            dZ[j] = dA * z[action] * (1 - z[action])
+        else:
+            dZ[j] = - dA * z[action] * z[j]
     return dZ.reshape((-1, 1))
 
 
