@@ -14,10 +14,10 @@ results = {
     "entropy": []
 }
 i_episode = 0
+agent = VPGAgent(4, 2)
 while True:
 
     observation = env.reset()
-    agent = VPGAgent(4, 2)
     max_time = 0
     loss_accum = []
     entropy_accum = []
