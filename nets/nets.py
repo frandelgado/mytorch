@@ -26,6 +26,9 @@ class Net:
 
         return params_values
 
+    def expose_layers(self):
+        return self.params_values
+
     def single_layer_forward_propagation(self, A_prev, W_curr, b_curr, activation="relu"):
         Z_curr = np.dot(W_curr, A_prev) + b_curr
 

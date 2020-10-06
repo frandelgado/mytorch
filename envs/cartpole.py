@@ -11,7 +11,8 @@ env = gym.make("CartPole-v0")
 results = {
     "loss": [],
     "episode_length": [],
-    "entropy": []
+    "entropy": [],
+    "layers": []
 }
 i_episode = 0
 agent = VPGAgent(4, 2)
@@ -37,11 +38,12 @@ while True:
     entropy_accum.append(entropy_mean)
     ep_accum.append(max_time)
 
-    if i_episode % 100 == 0:
+    if i_episode % 1000 == 0:
         print("Saved results")
         results["loss"].append(np.mean(loss_accum))
         results["entropy"].append((np.mean(entropy_accum)))
         results["episode_length"].append(np.mean(ep_accum))
+        results["layers"].append(agent.net.expose_layers())
         with open("../pickles/results.p", "wb") as file:
             pickle.dump(results, file)
 
