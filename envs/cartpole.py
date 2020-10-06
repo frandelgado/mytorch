@@ -44,6 +44,7 @@ while True:
         results["entropy"].append((np.mean(entropy_accum)))
         results["episode_length"].append(np.mean(ep_accum))
         results["layers"].append(agent.net.expose_layers())
+        agent.save(i_episode)
         with open("../pickles/results.p", "wb") as file:
             pickle.dump(results, file)
 

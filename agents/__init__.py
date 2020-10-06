@@ -13,3 +13,7 @@ class Agent:
     @abstractmethod
     def train(self, *args):
         pass
+
+    @abstractmethod
+    def save(self, iteration):
+        pass

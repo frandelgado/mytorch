@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import math
 from agents import Agent
@@ -48,4 +50,8 @@ class QAgent(Agent):
 
     def set_learning_rate(self, t):
         self.lr = max(self.min_lr, min(1., 1. - math.log10((t + 1) / 25)))
+
+    def save(self, episode):
+        with open(f"../pickles/q_agent_episode_{episode}.p", "wb") as file:
+            pickle.dump(self, file)
 

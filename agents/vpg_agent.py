@@ -1,9 +1,12 @@
+import pickle
+
 import numpy as np
 import torch
 from torch.utils.data import BatchSampler, SubsetRandomSampler
 
 from agents import Agent
 from nets.nets import Net
+from observers.saturation_observer import ReluSaturationObserver
 
 
 class VPGAgent(Agent):
@@ -86,3 +89,7 @@ class VPGAgent(Agent):
         self.actions = []
         self.a_probs = []
         self.rewards = []
+
+    def save(self, episode):
+        with open(f"../pickles/vpg_agent_episode_{episode}.p", "wb") as file:
+            pickle.dump(self, file)
