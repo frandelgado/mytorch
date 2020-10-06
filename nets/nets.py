@@ -4,10 +4,11 @@ from nets.activations import relu, sigmoid, relu_backward, sigmoid_backward, sof
 
 
 class Net:
-    def __init__(self, nn_architecture):
+    def __init__(self, nn_architecture, observer):
         self.cost_history = []
         self.nn_architecture = nn_architecture
         self.params_values = self.init_layers()
+        self.observer = observer
 
     def init_layers(self, seed=99):
         np.random.seed(seed)
@@ -58,6 +59,8 @@ class Net:
 
             memory["A" + str(idx)] = A_prev
             memory["Z" + str(layer_idx)] = Z_curr
+
+        self.observer.observe(memory, len(self.nn_architecture))
 
         return A_curr, memory
 

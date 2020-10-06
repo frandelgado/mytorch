@@ -15,10 +15,13 @@ class VPGAgent(Agent):
         self.lr = lr
         self.gamma = gamma
 
-        self.net = Net([
-            {"input_dim": 4, "output_dim": 50, "activation": "relu"},
-            {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
-        ])
+        self.net = Net(
+            [
+                {"input_dim": 4, "output_dim": 50, "activation": "relu"},
+                {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
+            ],
+            observer=ReluSaturationObserver()
+        )
 
         self.states = []
         self.new_states = []
