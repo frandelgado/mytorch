@@ -20,9 +20,10 @@ class ReluSaturationObserver:
     def _calculate_saturation_coefficient(self):
         total = 0
         zeros = 0
-        for net_output in self.net_outputs:
-            layer = net_output[0]
-            for output in layer:
+        for relu_outputs in self.net_outputs:
+            if isinstance(relu_outputs, int):
+                continue
+            for output in relu_outputs:
                 if output == 0:
                     zeros += 1
                 total += 1

@@ -4,7 +4,7 @@ from nets.activations import relu, sigmoid, relu_backward, sigmoid_backward, sof
 
 
 class Net:
-    def __init__(self, nn_architecture, observer):
+    def __init__(self, nn_architecture, observer=None):
         self.cost_history = []
         self.nn_architecture = nn_architecture
         self.params_values = self.init_layers()
@@ -59,8 +59,8 @@ class Net:
 
             memory["A" + str(idx)] = A_prev
             memory["Z" + str(layer_idx)] = Z_curr
-
-        self.observer.observe(memory, len(self.nn_architecture))
+        if self.observer:
+            self.observer.observe(memory)
 
         return A_curr, memory
 
@@ -131,10 +131,10 @@ class Net:
     def train(self, X, loss, dLoss, epochs, learning_rate, actions):
 
         for i in range(epochs):
-            Y_hat, cache = self.full_forward_propagation(X)
+            _, cache = self.full_forward_propagation(X)
             cost = loss.mean()
             self.cost_history.append(cost)
-            grads_values = self.full_backward_propagation(loss, cache, actions)
+            grads_values = self.full_backward_propagation(dLoss, cache, actions)
             self.update(grads_values, learning_rate)
 
         return self.cost_history

@@ -6,12 +6,11 @@ from torch.utils.data import BatchSampler, SubsetRandomSampler
 
 from agents import Agent
 from nets.nets import Net
-from observers.saturation_observer import ReluSaturationObserver
 
 
 class VPGAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-3, gamma=0.9):
+    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-5, gamma=0.9):
 
         self.state_space = state_space
         self.action_space = action_space
@@ -20,10 +19,10 @@ class VPGAgent(Agent):
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 50, "activation": "relu"},
-                {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
+                {"input_dim": 4, "output_dim": 20, "activation": "sigmoid"},
+                {"input_dim": 20, "output_dim": 2, "activation": "softmax"},
             ],
-            observer=ReluSaturationObserver()
+            observer=None
         )
 
         self.states = []
@@ -56,10 +55,10 @@ class VPGAgent(Agent):
             reward = rewards[i]
 
         # Normalize rewards
-        rewards -= rewards.mean()
-        std = rewards.std()
-        if std != 0:
-            rewards /= std
+        # rewards -= rewards.mean()
+        # std = rewards.std()
+        # if std != 0:
+        #     rewards /= std
 
         states = torch.tensor(self.states, dtype=torch.float)
         actions = torch.tensor(self.actions, dtype=torch.long).view(-1, 1)
@@ -71,10 +70,12 @@ class VPGAgent(Agent):
         for batch in BatchSampler(SubsetRandomSampler(range(len(self.states))), batch_size, drop_last=False):
             states_batch = states[batch].numpy().reshape((self.state_space, -1))
             probs, _ = self.net.full_forward_propagation(states_batch)
+            probs += 1e-8
+            entropy = -np.sum(np.log(probs) * probs)
             actions_batch = actions[batch].numpy()
             probs = np.take_along_axis(probs, actions_batch, axis=0)
+            # 0 bad number
             loss = -(np.log(probs) * rewards[batch])
-            entropy = -np.sum(np.log(probs + 1e-8)*probs)
             dLoss = -1/probs * rewards[batch]
             self.net.train(states_batch, loss, dLoss, epochs=1, learning_rate=self.lr, actions=actions_batch)
             losses.append(loss)

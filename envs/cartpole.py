@@ -14,8 +14,8 @@ results = {
     "entropy": [],
     "layers": []
 }
-i_episode = 0
 agent = VPGAgent(4, 2)
+i_episode = 0
 while True:
 
     observation = env.reset()
@@ -24,7 +24,7 @@ while True:
     entropy_accum = []
     ep_accum = []
 
-    for t in range(100):
+    for t in range(200):
         prev_obs = observation
         action, action_prob = agent.act(observation)
         observation, reward, done, info = env.step(action)
@@ -49,5 +49,6 @@ while True:
             pickle.dump(results, file)
 
     i_episode += 1
+
 env.close()
 
