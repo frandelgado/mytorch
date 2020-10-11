@@ -26,8 +26,8 @@ while True:
 
     for t in range(200):
         prev_obs = observation
-        action, action_prob = agent.act(observation)
-        observation, reward, done, info = env.step(action)
+        action, action_prob = agent.act(prev_obs)
+        observation, reward, done, _ = env.step(action)
         if done:
             break
         agent.store_transition(prev_obs, observation, action, action_prob, reward)
@@ -44,7 +44,8 @@ while True:
         results["entropy"].append((np.mean(entropy_accum)))
         results["episode_length"].append(np.mean(ep_accum))
         results["layers"].append(agent.net.expose_layers())
-        agent.save(i_episode)
+        if i_episode % 50000 == 0:
+            agent.save(i_episode)
         with open("../pickles/results.p", "wb") as file:
             pickle.dump(results, file)
 

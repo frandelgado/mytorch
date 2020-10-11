@@ -10,7 +10,7 @@ from nets.nets import Net
 
 class VPGAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-5, gamma=0.9):
+    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-2, gamma=0.9):
 
         self.state_space = state_space
         self.action_space = action_space
@@ -20,7 +20,7 @@ class VPGAgent(Agent):
         self.net = Net(
             [
                 {"input_dim": 4, "output_dim": 20, "activation": "sigmoid"},
-                {"input_dim": 20, "output_dim": 2, "activation": "softmax"},
+                {"input_dim": 20, "output_dim": 2, "activation": "sigmoid"},
             ],
             observer=None
         )
@@ -35,7 +35,8 @@ class VPGAgent(Agent):
         state = np.reshape(state, newshape=(self.state_space, -1))
         action_probs, _ = self.net.full_forward_propagation(state)
         action_probs = action_probs.squeeze()
-        action = np.random.choice(2, p=action_probs)
+        action = np.argmax(action_probs)
+        # action = np.random.choice(2, p=action_probs)
         return action, action_probs[action]
 
     def store_transition(self, state, new_state, action, a_prob, reward):
@@ -74,7 +75,6 @@ class VPGAgent(Agent):
             entropy = -np.sum(np.log(probs) * probs)
             actions_batch = actions[batch].numpy()
             probs = np.take_along_axis(probs, actions_batch, axis=0)
-            # 0 bad number
             loss = -(np.log(probs) * rewards[batch])
             dLoss = -1/probs * rewards[batch]
             self.net.train(states_batch, loss, dLoss, epochs=1, learning_rate=self.lr, actions=actions_batch)

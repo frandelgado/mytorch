@@ -20,10 +20,13 @@ class Net:
             layer_input_size = layer["input_dim"]
             layer_output_size = layer["output_dim"]
 
+            params_values["prevW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
+            params_values["prevb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
+
             params_values['W' + str(layer_idx)] = np.random.randn(
-                layer_output_size, layer_input_size) * 0.1
+                layer_output_size, layer_input_size) * np.sqrt(2/(layer_output_size + layer_input_size))
             params_values['b' + str(layer_idx)] = np.random.randn(
-                layer_output_size, 1) * 0.1
+                layer_output_size, 1) * np.sqrt(2/layer_output_size)
 
         return params_values
 
@@ -119,8 +122,15 @@ class Net:
     def update(self, grads_values, learning_rate):
         for layer_idx, layer in enumerate(self.nn_architecture):
             layer_idx = layer_idx + 1
-            self.params_values["W" + str(layer_idx)] -= learning_rate * grads_values["dW" + str(layer_idx)]
-            self.params_values["b" + str(layer_idx)] -= learning_rate * grads_values["db" + str(layer_idx)]
+            self.params_values["W" + str(layer_idx)] -= learning_rate * (
+                    grads_values["dW" + str(layer_idx)] + 0.8 * self.params_values["prevW" + str(layer_idx)]
+            )
+            self.params_values["b" + str(layer_idx)] -= learning_rate * (
+                    grads_values["db" + str(layer_idx)]  + 0.8 * self.params_values["prevb" + str(layer_idx)]
+            )
+
+            self.params_values["prevW" + str(layer_idx)] = self.params_values["W" + str(layer_idx)]
+            self.params_values["prevb" + str(layer_idx)] = self.params_values["b" + str(layer_idx)]
 
     def get_cost_value(self, Y_hat, Y):
 

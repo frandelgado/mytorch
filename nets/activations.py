@@ -2,7 +2,8 @@ import numpy as np
 
 
 def sigmoid(z):
-    return 1/(1 + np.exp(-z))
+    z = np.clip(z, -500, 500)
+    return 1.0/(1.0 + np.exp(-z))
 
 
 def relu(z):
@@ -59,7 +60,6 @@ def softmax(x):
 def softmax_backward(dA, z, action):
     """
     Calculates dL/dZ
-
     :param dA:
         ndarray representing the vector of partial derivatives dL/dA
     :param z:
@@ -68,13 +68,14 @@ def softmax_backward(dA, z, action):
         ndarray representing the vector of partial derivatives dL/dZ
     """
     z = z.reshape(1, -1).squeeze()
+    S = softmax(z)
     action = action.squeeze()
     dZ = np.zeros(len(z))
     for j in range(len(z)):
         if j == action:
-            dZ[j] = dA * z[action] * (1 - z[action])
+            dZ[j] = dA * S[action] * (1 - S[action])
         else:
-            dZ[j] = - dA * z[action] * z[j]
+            dZ[j] = - dA * S[action] * S[j]
     return dZ.reshape((-1, 1))
 
 

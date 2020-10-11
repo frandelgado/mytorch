@@ -15,7 +15,7 @@ results = {
 }
 agent = QAgent(env.observation_space, env.action_space)
 
-for i_episode in range(1000):
+for i_episode in range(10001):
     observation = env.reset()
     max_time = 0
     ep_accum = []
@@ -34,6 +34,7 @@ for i_episode in range(1000):
     results["episode_length"].append(max_time)
     if i_episode % 100 == 0:
         print("Saved results")
+        agent.save(i_episode)
         with open("../pickles/results.p", "wb") as file:
             pickle.dump(results, file)
 
