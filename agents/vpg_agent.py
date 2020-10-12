@@ -10,7 +10,7 @@ from nets.nets import Net
 
 class VPGAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-2, gamma=0.9):
+    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-5, gamma=0.9):
 
         self.state_space = state_space
         self.action_space = action_space
@@ -19,8 +19,8 @@ class VPGAgent(Agent):
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 20, "activation": "sigmoid"},
-                {"input_dim": 20, "output_dim": 2, "activation": "sigmoid"},
+                {"input_dim": 4, "output_dim": 50, "activation": "relu"},
+                {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
             ],
             observer=None
         )
@@ -46,7 +46,7 @@ class VPGAgent(Agent):
         self.a_probs.append(a_prob)
         self.rewards.append(reward)
 
-    def train(self, batch_size=8):
+    def train(self, batch_size=1):
 
         # Unroll rewards
         rewards = np.array(self.rewards)
