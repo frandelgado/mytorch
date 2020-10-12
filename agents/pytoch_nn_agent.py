@@ -12,14 +12,14 @@ from agents import Agent
 
 class PytorchNNAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-2, gamma=0.9):
+    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-3, gamma=0.9):
         self.state_space = state_space
         self.action_space = action_space
         self.lr = lr
         self.gamma = gamma
 
         self.net = Net(state_space, hidden, action_space)
-        self.optimizer = optim.Adam(self.net.parameters(), lr=lr)
+        self.optimizer = optim.SGD(self.net.parameters(), lr=lr)
 
         self.states = []
         self.new_states = []
