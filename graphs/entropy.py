@@ -11,6 +11,6 @@ x_av = movingaverage(entropy, 200)
 plt.plot([i for i in range(0, len(x_av))], x_av)
 
 
-plt.xlabel("Iteraciones")
-plt.ylabel("Entripía")
+plt.xlabel("Episodios")
+plt.ylabel("Entripía promedio")
 plt.show()

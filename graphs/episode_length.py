@@ -12,7 +12,7 @@ x_av = movingaverage(episode_length, 200)
 plt.plot([i for i in range(0, len(x_av))], x_av)
 
 
-plt.xlabel("Iteraciones")
-plt.ylabel("duración del episodio")
+plt.xlabel("Episodios")
+plt.ylabel("Duración del episodio")
 
 plt.show()
