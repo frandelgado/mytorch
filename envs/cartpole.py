@@ -4,6 +4,7 @@ import numpy as np
 
 import gym
 
+from agents.pytoch_nn_agent import PytorchNNAgent
 from agents.vpg_agent import VPGAgent
 
 env = gym.make("CartPole-v0")
@@ -12,39 +13,39 @@ results = {
     "loss": [],
     "episode_length": [],
     "entropy": [],
-    "layers": []
 }
 agent = VPGAgent(4, 2)
 i_episode = 0
+
+mean_losses = []
+mean_entropies = []
+mean_episode_lengths = []
+
 while True:
 
     observation = env.reset()
-    max_time = 0
-    loss_accum = []
-    entropy_accum = []
-    ep_accum = []
+    episode_length = 0
 
-    for t in range(200):
+    for timestep in range(200):
         prev_obs = observation
         action, action_prob = agent.act(prev_obs)
         observation, reward, done, _ = env.step(action)
         if done:
             break
         agent.store_transition(prev_obs, observation, action, action_prob, reward)
-        max_time = t
+        episode_length = timestep
 
-    loss_mean, entropy_mean = agent.train(batch_size=1)
-    loss_accum.append(loss_mean)
-    entropy_accum.append(entropy_mean)
-    ep_accum.append(max_time)
+    loss_mean, entropy_mean = agent.train()
+    mean_losses.append(loss_mean)
+    mean_entropies.append(entropy_mean)
+    mean_episode_lengths.append(episode_length)
 
-    if i_episode % 1000 == 0:
+    if i_episode % 100 == 0:
         print("Saved results")
-        results["loss"].append(np.mean(loss_accum))
-        results["entropy"].append((np.mean(entropy_accum)))
-        results["episode_length"].append(np.mean(ep_accum))
-        results["layers"].append(agent.net.expose_layers())
-        if i_episode % 50000 == 0:
+        results["loss"] = mean_losses
+        results["entropy"] = mean_entropies
+        results["episode_length"] = mean_episode_lengths
+        if i_episode % 10000 == 0:
             agent.save(i_episode)
         with open("../pickles/results.p", "wb") as file:
             pickle.dump(results, file)
