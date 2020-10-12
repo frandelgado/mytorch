@@ -89,9 +89,11 @@ class Net(nn.Module):
     def __init__(self, input, hidden, output):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(input, hidden)
-        self.fc2 = nn.Linear(hidden, output)
+        self.fc2 = nn.Linear(hidden, int(hidden/2))
+        self.fc3 = nn.Linear(int(hidden/2), output)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        x = F.softmax(self.fc2(x), dim=1)
+        x = F.relu(self.fc2(x))
+        x = F.softmax(self.fc3(x), dim=1)
         return x

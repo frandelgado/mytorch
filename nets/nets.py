@@ -120,13 +120,14 @@ class Net:
 
         return grads_values
 
-    def update(self, grads_values, learning_rate):
+    def update(self, grads_values, reward, gamma, timestep, probability, learning_rate):
+        multiplier = learning_rate * np.power(gamma, timestep) * reward / probability
         for layer_idx, layer in enumerate(self.nn_architecture):
             layer_idx = layer_idx + 1
-            self.params_values["W" + str(layer_idx)] -= learning_rate * (
+            self.params_values["W" + str(layer_idx)] += multiplier * (
                     grads_values["dW" + str(layer_idx)]
             )
-            self.params_values["b" + str(layer_idx)] -= learning_rate * (
+            self.params_values["b" + str(layer_idx)] += multiplier * (
                     grads_values["db" + str(layer_idx)]
             )
 
@@ -135,14 +136,3 @@ class Net:
         m = Y_hat.shape[1]
         cost = 0.5 * np.sum(np.subtract(Y_hat, Y) ** 2)
         return np.squeeze(cost)
-
-    def train(self, X, loss, dLoss, epochs, learning_rate, actions):
-
-        for i in range(epochs):
-            _, cache = self.full_forward_propagation(X)
-            cost = loss.mean()
-            self.cost_history.append(cost)
-            grads_values = self.full_backward_propagation(dLoss, cache, actions)
-            self.update(grads_values, learning_rate)
-
-        return self.cost_history

@@ -51,10 +51,8 @@ def softmax(x):
     :return:
         the output vector of the softmax function
     """
-    shifted_x = x - np.max(x)
-    exps = np.exp(shifted_x)
-    exps_sum = np.sum(exps)
-    return exps/exps_sum
+    exps = np.exp(x)
+    return exps / np.sum(exps)
 
 
 def softmax_backward(dA, z, action):

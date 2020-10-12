@@ -10,7 +10,14 @@ from nets.nets import Net
 
 class VPGAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-5, gamma=0.9):
+    def _normalize_state(self, state):
+        state[0] /= 4.8
+        state[1] /= 0.5
+        state[2] /= 0.41887903
+        state[3] /= 0.8726646259971648
+        return state
+
+    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-4, gamma=0.9):
 
         self.state_space = state_space
         self.action_space = action_space
@@ -19,8 +26,9 @@ class VPGAgent(Agent):
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 5, "activation": "sigmoid"},
-                {"input_dim": 5, "output_dim": 1, "activation": "sigmoid"},
+                {"input_dim": 4, "output_dim": 20, "activation": "sigmoid"},
+                {"input_dim": 20, "output_dim": 10, "activation": "sigmoid"},
+                {"input_dim": 10, "output_dim": 1, "activation": "sigmoid"},
             ],
             observer=None
         )
@@ -32,6 +40,7 @@ class VPGAgent(Agent):
         self.rewards = []
 
     def act(self, state):
+        state = self._normalize_state(state)
         state = np.reshape(state, newshape=(self.state_space, -1))
         action_probs, _ = self.net.full_forward_propagation(state)
         action_probs = action_probs.squeeze()
@@ -40,8 +49,8 @@ class VPGAgent(Agent):
         return action, action_probs[action]
 
     def store_transition(self, state, new_state, action, a_prob, reward):
-        self.states.append(state)
-        self.new_states.append(new_state)
+        self.states.append(self._normalize_state(state))
+        self.new_states.append(self._normalize_state(new_state))
         self.actions.append(action)
         self.a_probs.append(a_prob)
         self.rewards.append(reward)
@@ -68,23 +77,38 @@ class VPGAgent(Agent):
         losses = []
         entropies = []
 
-        for batch in BatchSampler(SubsetRandomSampler(range(len(self.states))), batch_size, drop_last=False):
-            states_batch = states[batch].numpy().reshape((self.state_space, -1))
-            probs, _ = self.net.full_forward_propagation(states_batch)
-            probs = probs.squeeze()
-            probs = np.array([probs, 1 - probs]).reshape(-1, 1)
-            probs += 1e-8
+        for timestep in range(len(states)):
+            states_batch = states[timestep].numpy().reshape((self.state_space, -1))
+            probs, cache = self._get_probs(states_batch)
             entropy = -np.sum(np.log(probs) * probs)
-            actions_batch = actions[batch].numpy()
-            probs = np.take_along_axis(probs, actions_batch, axis=0)
-            loss = -(np.log(probs) * rewards[batch])
-            dLoss = -1/probs * rewards[batch]
-            self.net.train(states_batch, loss, dLoss, epochs=1, learning_rate=self.lr, actions=actions_batch)
+            actions_batch = actions[timestep].numpy()
+            selected_probabilities = np.take_along_axis(probs, actions_batch, axis=0)
+
+            loss = -(np.log(selected_probabilities) * rewards[timestep])
+            # dLoss = -1/selected_probabilities * rewards[timestep]
+
+            grads_values = self.net.full_backward_propagation(np.array([[1]]), cache, actions)
+            self.net.update(
+                grads_values,
+                reward=rewards[timestep],
+                timestep=timestep,
+                gamma=self.gamma,
+                probability=selected_probabilities,
+                learning_rate=self.lr
+            )
+
             losses.append(loss)
             entropies.append(entropy)
         self._clear_buffers()
 
         return np.mean(losses), np.mean(entropies)
+
+    def _get_probs(self, states):
+        probs, cache = self.net.full_forward_propagation(states)
+        probs = probs.squeeze()
+        probs = np.array([probs, 1 - probs])
+        probs += 1e-8
+        return probs, cache
 
     def _clear_buffers(self):
         self.states = []
