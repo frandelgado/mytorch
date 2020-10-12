@@ -24,9 +24,9 @@ class Net:
             params_values["prevb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
 
             params_values['W' + str(layer_idx)] = np.random.randn(
-                layer_output_size, layer_input_size) * np.sqrt(1 / layer_output_size)
+                layer_output_size, layer_input_size) * (1 / np.sqrt(layer_output_size) - 0.5)
             params_values['b' + str(layer_idx)] = np.random.randn(
-                layer_output_size, 1) * np.sqrt(1 / layer_output_size)
+                layer_output_size, 1) * (1 / np.sqrt(layer_output_size) - 0.5)
 
         return params_values
 
@@ -130,19 +130,8 @@ class Net:
                     grads_values["db" + str(layer_idx)]
             )
 
-    def get_cost_value(self, Y_hat, Y):
-
-        m = Y_hat.shape[1]
-        cost = 0.5 * np.sum(np.subtract(Y_hat, Y) ** 2)
-        return np.squeeze(cost)
-
     def train(self, X, loss, dLoss, epochs, learning_rate, actions):
+        _, cache = self.full_forward_propagation(X)
+        grads_values = self.full_backward_propagation(dLoss, cache, actions)
+        self.update(grads_values, learning_rate)
 
-        for i in range(epochs):
-            _, cache = self.full_forward_propagation(X)
-            cost = loss.mean()
-            self.cost_history.append(cost)
-            grads_values = self.full_backward_propagation(dLoss, cache, actions)
-            self.update(grads_values, learning_rate)
-
-        return self.cost_history

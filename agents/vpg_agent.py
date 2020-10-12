@@ -19,8 +19,9 @@ class VPGAgent(Agent):
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 5, "activation": "sigmoid"},
-                {"input_dim": 5, "output_dim": 1, "activation": "sigmoid"},
+                {"input_dim": 4, "output_dim": 50, "activation": "sigmoid"},
+                {"input_dim": 50, "output_dim": 20, "activation": "sigmoid"},
+                {"input_dim": 20, "output_dim": 1, "activation": "sigmoid"},
             ],
             observer=None
         )
@@ -54,12 +55,6 @@ class VPGAgent(Agent):
         for i in reversed(range(len(self.rewards))):
             rewards[i] += self.gamma * reward
             reward = rewards[i]
-
-        # Normalize rewards
-        # rewards -= rewards.mean()
-        # std = rewards.std()
-        # if std != 0:
-        #     rewards /= std
 
         states = torch.tensor(self.states, dtype=torch.float)
         actions = torch.tensor(self.actions, dtype=torch.long).view(-1, 1)
