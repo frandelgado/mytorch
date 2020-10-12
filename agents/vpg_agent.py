@@ -19,8 +19,8 @@ class VPGAgent(Agent):
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 50, "activation": "relu"},
-                {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
+                {"input_dim": 4, "output_dim": 5, "activation": "sigmoid"},
+                {"input_dim": 5, "output_dim": 1, "activation": "sigmoid"},
             ],
             observer=None
         )
@@ -35,8 +35,8 @@ class VPGAgent(Agent):
         state = np.reshape(state, newshape=(self.state_space, -1))
         action_probs, _ = self.net.full_forward_propagation(state)
         action_probs = action_probs.squeeze()
-        action = np.argmax(action_probs)
-        # action = np.random.choice(2, p=action_probs)
+        action_probs = [action_probs, 1 - action_probs]
+        action = np.random.choice(2, p=action_probs)
         return action, action_probs[action]
 
     def store_transition(self, state, new_state, action, a_prob, reward):
@@ -71,6 +71,8 @@ class VPGAgent(Agent):
         for batch in BatchSampler(SubsetRandomSampler(range(len(self.states))), batch_size, drop_last=False):
             states_batch = states[batch].numpy().reshape((self.state_space, -1))
             probs, _ = self.net.full_forward_propagation(states_batch)
+            probs = probs.squeeze()
+            probs = np.array([probs, 1 - probs]).reshape(-1, 1)
             probs += 1e-8
             entropy = -np.sum(np.log(probs) * probs)
             actions_batch = actions[batch].numpy()
