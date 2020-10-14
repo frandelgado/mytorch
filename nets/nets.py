@@ -4,11 +4,10 @@ from nets.activations import relu, sigmoid, relu_backward, sigmoid_backward, sof
 
 
 class Net:
-    def __init__(self, nn_architecture, observer=None):
+    def __init__(self, nn_architecture):
         self.cost_history = []
         self.nn_architecture = nn_architecture
         self.params_values = self.init_layers()
-        self.observer = observer
 
     def init_layers(self, seed=99):
         np.random.seed(seed)
@@ -29,9 +28,6 @@ class Net:
                 layer_output_size, 1) * (1 / np.sqrt(layer_output_size) - 0.5)
 
         return params_values
-
-    def expose_layers(self):
-        return self.params_values
 
     def single_layer_forward_propagation(self, A_prev, W_curr, b_curr, activation="relu"):
         Z_curr = np.dot(W_curr, A_prev) + b_curr
@@ -62,8 +58,6 @@ class Net:
 
             memory["A" + str(idx)] = A_prev
             memory["Z" + str(layer_idx)] = Z_curr
-        if self.observer:
-            self.observer.observe(memory)
 
         return A_curr, memory
 

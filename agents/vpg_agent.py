@@ -19,11 +19,9 @@ class VPGAgent(Agent):
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 50, "activation": "sigmoid"},
-                {"input_dim": 50, "output_dim": 20, "activation": "sigmoid"},
+                {"input_dim": 4, "output_dim": 20, "activation": "sigmoid"},
                 {"input_dim": 20, "output_dim": 1, "activation": "sigmoid"},
-            ],
-            observer=None
+            ]
         )
 
         self.states = []
