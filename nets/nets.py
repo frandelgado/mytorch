@@ -4,11 +4,16 @@ from nets.activations import relu, sigmoid, relu_backward, sigmoid_backward, sof
 
 
 class Net:
-    def __init__(self, nn_architecture):
+    def __init__(self, nn_architecture, optimizer="momentum"):
+        self.optimizer = optimizer
+        if self.optimizer == "momentum":
+            self._save_prev_grads = True
+        else:
+            self._save_prev_grads = False
         self.cost_history = []
         self.nn_architecture = nn_architecture
         self.params_values = self.init_layers()
-
+        
     def init_layers(self, seed=99):
         np.random.seed(seed)
         params_values = {}
@@ -18,8 +23,9 @@ class Net:
             layer_input_size = layer["input_dim"]
             layer_output_size = layer["output_dim"]
 
-            params_values["prevdW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
-            params_values["prevdb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
+            if self._save_prev_grads:
+                params_values["prevdW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
+                params_values["prevdb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
 
             params_values['W' + str(layer_idx)] = np.random.randn(
                 layer_output_size, layer_input_size) * (1 / np.sqrt(layer_input_size))
@@ -112,6 +118,10 @@ class Net:
         return grads_values
 
     def update(self, grads_values, learning_rate):
+        if self.optimizer == "momentum":
+            self._update_momentum(grads_values, learning_rate)
+
+    def _update_momentum(self, grads_values, learning_rate):
         for layer_idx, layer in enumerate(self.nn_architecture):
             layer_idx = layer_idx + 1
 
@@ -123,11 +133,6 @@ class Net:
 
             self.params_values["prevdW" + str(layer_idx)] = dW
             self.params_values["prevdb" + str(layer_idx)] = db
-
-    def train(self, X, loss, dLoss, epochs, learning_rate, actions):
-        _, cache = self.full_forward_propagation(X)
-        grads_values = self.full_backward_propagation(dLoss, cache, actions)
-        self.update(grads_values, learning_rate)
 
     def mean_grads(self, grads_values_batch, batch_size):
         grads_values_sum = {}
