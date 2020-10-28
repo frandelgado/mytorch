@@ -10,17 +10,18 @@ from nets.nets import Net
 
 class VPGAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-5, gamma=0.9):
+    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-4, gamma=0.9):
 
         self.state_space = state_space
         self.action_space = action_space
         self.lr = lr
         self.gamma = gamma
+        self.episode_lengths = []
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 20, "activation": "sigmoid"},
-                {"input_dim": 20, "output_dim": 1, "activation": "sigmoid"},
+                {"input_dim": 4, "output_dim": 50, "activation": "sigmoid"},
+                {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
             ]
         )
 
@@ -33,9 +34,7 @@ class VPGAgent(Agent):
     def act(self, state):
         state = np.reshape(state, newshape=(self.state_space, -1))
         action_probs, _ = self.net.full_forward_propagation(state)
-        action_probs = action_probs.squeeze()
-        action_probs = [action_probs, 1 - action_probs]
-        action = np.random.choice(2, p=action_probs)
+        action = np.random.choice(2, p=action_probs.squeeze())
         return action, action_probs[action]
 
     def store_transition(self, state, new_state, action, a_prob, reward):
@@ -45,7 +44,7 @@ class VPGAgent(Agent):
         self.a_probs.append(a_prob)
         self.rewards.append(reward)
 
-    def train(self, batch_size=1):
+    def train(self, batch_size=6):
 
         # Unroll rewards
         rewards = np.array(self.rewards)
@@ -61,23 +60,38 @@ class VPGAgent(Agent):
         losses = []
         entropies = []
 
+        self.episode_lengths.append(len(self.rewards))
+        # calcular LR
+        avg_length_window = np.mean(self.episode_lengths[-100:])
+        exp = -0.02 * avg_length_window - 2
+        learning_rate = 10 ** exp
+
         for batch in BatchSampler(SubsetRandomSampler(range(len(self.states))), batch_size, drop_last=False):
-            states_batch = states[batch].numpy().reshape((self.state_space, -1))
-            probs, _ = self.net.full_forward_propagation(states_batch)
-            probs = probs.squeeze()
-            probs = np.array([probs, 1 - probs]).reshape(-1, 1)
-            probs += 1e-8
-            entropy = -np.sum(np.log(probs) * probs)
+            states_batch = states[batch].numpy()
             actions_batch = actions[batch].numpy()
-            probs = np.take_along_axis(probs, actions_batch, axis=0)
-            loss = -(np.log(probs) * rewards[batch])
-            dLoss = -1/probs * rewards[batch]
-            self.net.train(states_batch, loss, dLoss, epochs=1, learning_rate=self.lr, actions=actions_batch)
-            losses.append(loss)
-            entropies.append(entropy)
+            rewards_batch = rewards[batch]
+            grads_values_batch = []
+            loss = []
+            entropy = []
+            for state, action, reward in zip(states_batch, actions_batch, rewards_batch):
+                state = state.reshape((-1, 1))
+                probs, cache = self.net.full_forward_propagation(state)
+                probs = probs.squeeze() + 1e-8
+                entropy.append(-np.sum(np.log(probs) * probs))
+                action_prob = probs[action]
+                loss.append(-(np.log(action_prob) * reward))
+                dLoss = 1/action_prob * reward
+                grads_values = self.net.full_backward_propagation(dLoss, cache, action)
+                grads_values_batch.append(grads_values)
+
+            losses.append(np.mean(loss))
+            entropies.append(np.mean(entropy))
+            grads_values_mean = self.net.mean_grads(grads_values_batch, batch_size)
+
+            self.net.update(grads_values_mean, learning_rate)
         self._clear_buffers()
 
-        return np.mean(losses), np.mean(entropies)
+        return np.mean(losses), np.mean(entropies), learning_rate
 
     def _clear_buffers(self):
         self.states = []

@@ -11,7 +11,6 @@ class Net:
 
     def init_layers(self, seed=99):
         np.random.seed(seed)
-        number_of_layers = len(self.nn_architecture)
         params_values = {}
 
         for idx, layer in enumerate(self.nn_architecture):
@@ -19,13 +18,13 @@ class Net:
             layer_input_size = layer["input_dim"]
             layer_output_size = layer["output_dim"]
 
-            params_values["prevW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
-            params_values["prevb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
+            params_values["prevdW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
+            params_values["prevdb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
 
             params_values['W' + str(layer_idx)] = np.random.randn(
-                layer_output_size, layer_input_size) * (1 / np.sqrt(layer_output_size) - 0.5)
+                layer_output_size, layer_input_size) * (1 / np.sqrt(layer_input_size))
             params_values['b' + str(layer_idx)] = np.random.randn(
-                layer_output_size, 1) * (1 / np.sqrt(layer_output_size) - 0.5)
+                layer_output_size, 1) * (1 / np.sqrt(layer_input_size))
 
         return params_values
 
@@ -81,12 +80,10 @@ class Net:
 
         return dA_prev, dW_curr, db_curr
 
-    def full_backward_propagation(self, loss, cache, action=None):
+    def full_backward_propagation(self, dLoss, cache, action=None):
         # Dictionary to accumulate the gradients
         grads_values = {}
-        m = loss.shape[1]
-
-        dA_prev = loss
+        dA_prev = dLoss
 
         for layer_idx_prev, layer in reversed(list(enumerate(self.nn_architecture))):
             layer_idx_curr = layer_idx_prev + 1
@@ -117,15 +114,34 @@ class Net:
     def update(self, grads_values, learning_rate):
         for layer_idx, layer in enumerate(self.nn_architecture):
             layer_idx = layer_idx + 1
-            self.params_values["W" + str(layer_idx)] -= learning_rate * (
-                    grads_values["dW" + str(layer_idx)]
-            )
-            self.params_values["b" + str(layer_idx)] -= learning_rate * (
-                    grads_values["db" + str(layer_idx)]
-            )
+
+            dW = grads_values["dW" + str(layer_idx)] + (0.7 * self.params_values["prevdW" + str(layer_idx)])
+            db = grads_values["db" + str(layer_idx)] + (0.7 * self.params_values["prevdb" + str(layer_idx)])
+
+            self.params_values["W" + str(layer_idx)] += learning_rate * dW
+            self.params_values["b" + str(layer_idx)] += learning_rate * db
+
+            self.params_values["prevdW" + str(layer_idx)] = dW
+            self.params_values["prevdb" + str(layer_idx)] = db
 
     def train(self, X, loss, dLoss, epochs, learning_rate, actions):
         _, cache = self.full_forward_propagation(X)
         grads_values = self.full_backward_propagation(dLoss, cache, actions)
         self.update(grads_values, learning_rate)
 
+    def mean_grads(self, grads_values_batch, batch_size):
+        grads_values_sum = {}
+        for layer_idx, layer in enumerate(self.nn_architecture):
+            layer_idx = layer_idx + 1
+            for grad_values in grads_values_batch:
+                if not "dW" + str(layer_idx) in grads_values_sum:
+                    grads_values_sum["dW" + str(layer_idx)] = grad_values["dW" + str(layer_idx)]
+                    grads_values_sum["db" + str(layer_idx)] = grad_values["db" + str(layer_idx)]
+                else:
+                    grads_values_sum["dW" + str(layer_idx)] += grad_values["dW" + str(layer_idx)]
+                    grads_values_sum["db" + str(layer_idx)] += grad_values["db" + str(layer_idx)]
+
+            grads_values_sum["dW" + str(layer_idx)] /= batch_size
+            grads_values_sum["db" + str(layer_idx)] /= batch_size
+
+        return grads_values_sum

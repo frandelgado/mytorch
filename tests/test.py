@@ -6,7 +6,7 @@ import gym
 env = gym.make('CartPole-v0')
 t = 0
 done = False
-agent = pickle.load(open("../pickles/pytorch_agent_episode_10000.p", "rb"))
+agent = pickle.load(open("../pickles/vpg_agent_episode_12000.p", "rb"))
 
 current_state = env.reset()
 while not done:
