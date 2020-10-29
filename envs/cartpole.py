@@ -4,6 +4,7 @@ import numpy as np
 
 import gym
 
+from agents.ppo_agent import PPOAgent
 from agents.pytoch_nn_agent import PytorchNNAgent
 from agents.vpg_agent import VPGAgent
 
@@ -15,7 +16,7 @@ results = {
     "entropy": [],
     "learning_rate": [],
 }
-agent = VPGAgent(4, 2)
+agent = PPOAgent(4, 2)
 i_episode = 0
 
 mean_losses = []

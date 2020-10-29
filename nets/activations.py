@@ -91,7 +91,7 @@ def linear(x):
     return x
 
 
-def linear_backward(dA, z):
+def linear_backward(dA, z, action):
     """
     Derivative for the linear funciont y = x
 

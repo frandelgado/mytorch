@@ -1,19 +1,27 @@
 import numpy as np
 
-from nets.activations import relu, sigmoid, relu_backward, sigmoid_backward, softmax, softmax_backward
+from nets.activations import relu, sigmoid, relu_backward, sigmoid_backward, softmax, softmax_backward, linear, \
+    linear_backward
 
 
 class Net:
     def __init__(self, nn_architecture, optimizer="momentum"):
         self.optimizer = optimizer
-        if self.optimizer == "momentum":
+        self._step = 0
+        if self.optimizer == "momentum" or self.optimizer == "adam":
             self._save_prev_grads = True
         else:
             self._save_prev_grads = False
+
+        if self.optimizer == "rmsprop" or self.optimizer == "adam":
+            self._save_second_order = True
+        else:
+            self._save_second_order = False
+
         self.cost_history = []
         self.nn_architecture = nn_architecture
         self.params_values = self.init_layers()
-        
+
     def init_layers(self, seed=99):
         np.random.seed(seed)
         params_values = {}
@@ -26,6 +34,10 @@ class Net:
             if self._save_prev_grads:
                 params_values["prevdW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
                 params_values["prevdb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
+
+            if self._save_second_order:
+                params_values["prevVnW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
+                params_values["prevVnb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
 
             params_values['W' + str(layer_idx)] = np.random.randn(
                 layer_output_size, layer_input_size) * (1 / np.sqrt(layer_input_size))
@@ -43,6 +55,8 @@ class Net:
             activation_func = sigmoid
         elif activation == "softmax":
             activation_func = softmax
+        elif activation == "linear":
+            activation_func = linear
         else:
             raise Exception('Non-supported activation function')
 
@@ -76,6 +90,8 @@ class Net:
             backward_activation_func = sigmoid_backward
         elif activation == "softmax":
             backward_activation_func = softmax_backward
+        elif activation == "linear":
+            backward_activation_func = linear_backward
         else:
             raise Exception('Non-supported activation function')
 
@@ -120,6 +136,10 @@ class Net:
     def update(self, grads_values, learning_rate):
         if self.optimizer == "momentum":
             self._update_momentum(grads_values, learning_rate)
+        elif self.optimizer == "rmsprop":
+            self._update_rmsprop(grads_values, learning_rate)
+        elif self.optimizer == "adam":
+            self._update_adam(grads_values, learning_rate)
 
     def _update_momentum(self, grads_values, learning_rate):
         for layer_idx, layer in enumerate(self.nn_architecture):
@@ -133,6 +153,61 @@ class Net:
 
             self.params_values["prevdW" + str(layer_idx)] = dW
             self.params_values["prevdb" + str(layer_idx)] = db
+
+    def _update_rmsprop(self, grads_values, learning_rate):
+
+        for layer_idx, layer in enumerate(self.nn_architecture):
+            layer_idx = layer_idx + 1
+            beta = 0.9
+
+            dW = grads_values["dW" + str(layer_idx)]
+            db = grads_values["db" + str(layer_idx)]
+
+            VnW = beta * self.params_values["prevVnW" + str(layer_idx)] + (1 - beta) * np.square(dW)
+            Vnb = beta * self.params_values["prevVnb" + str(layer_idx)] + (1 - beta) * np.square(db)
+
+            self.params_values["prevVnW" + str(layer_idx)] = VnW
+            self.params_values["prevVnb" + str(layer_idx)] = Vnb
+
+            rmsprop_lrW = learning_rate / np.sqrt(VnW + 1e-8)
+            rmsprop_lrb = learning_rate / np.sqrt(Vnb + 1e-8)
+
+            self.params_values["W" + str(layer_idx)] += rmsprop_lrW * dW
+            self.params_values["b" + str(layer_idx)] += rmsprop_lrb * db
+
+    def _update_adam(self, grads_values, learning_rate):
+        self._step += 1
+        for layer_idx, layer in enumerate(self.nn_architecture):
+            layer_idx = layer_idx + 1
+            beta_2 = 0.9
+            beta_1 = 0.9
+
+            dW = grads_values["dW" + str(layer_idx)]
+            db = grads_values["db" + str(layer_idx)]
+
+            MnW = beta_1 * self.params_values["prevdW" + str(layer_idx)] + (1 - beta_2) * dW
+            Mnb = beta_1 * self.params_values["prevdb" + str(layer_idx)] + (1 - beta_2) * db
+
+            self.params_values["prevdW" + str(layer_idx)] = MnW
+            self.params_values["prevdb" + str(layer_idx)] = Mnb
+
+            VnW = beta_2 * self.params_values["prevVnW" + str(layer_idx)] + (1 - beta_2) * np.square(dW)
+            Vnb = beta_2 * self.params_values["prevVnb" + str(layer_idx)] + (1 - beta_2) * np.square(db)
+
+            self.params_values["prevVnW" + str(layer_idx)] = VnW
+            self.params_values["prevVnb" + str(layer_idx)] = Vnb
+
+            MnW_hat = MnW / (1 - np.power(beta_1, self._step))
+            Mnb_hat = Mnb / (1 - np.power(beta_1, self._step))
+
+            VnW_hat = VnW / (1 - np.power(beta_2, self._step))
+            Vnb_hat = Vnb / (1 - np.power(beta_2, self._step))
+
+            rmsprop_lrW = learning_rate / np.sqrt(VnW_hat + 1e-8)
+            rmsprop_lrb = learning_rate / np.sqrt(Vnb_hat + 1e-8)
+
+            self.params_values["W" + str(layer_idx)] += rmsprop_lrW * MnW_hat
+            self.params_values["b" + str(layer_idx)] += rmsprop_lrb * Mnb_hat
 
     def mean_grads(self, grads_values_batch, batch_size):
         grads_values_sum = {}

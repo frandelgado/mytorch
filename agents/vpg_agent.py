@@ -10,7 +10,9 @@ from nets.nets import Net
 
 class VPGAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-4, gamma=0.9):
+    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-3, gamma=0.9):
+        # Config
+        self._adapt_lr_on_ep_len = False
 
         self.state_space = state_space
         self.action_space = action_space
@@ -22,7 +24,8 @@ class VPGAgent(Agent):
             [
                 {"input_dim": 4, "output_dim": 50, "activation": "sigmoid"},
                 {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
-            ]
+            ],
+            optimizer="adam"
         )
 
         self.states = []
@@ -60,11 +63,14 @@ class VPGAgent(Agent):
         losses = []
         entropies = []
 
-        self.episode_lengths.append(len(self.rewards))
-        # calcular LR
-        avg_length_window = np.mean(self.episode_lengths[-100:])
-        exp = -0.02 * avg_length_window - 2
-        learning_rate = 10 ** exp
+        if self._adapt_lr_on_ep_len:
+            self.episode_lengths.append(len(self.rewards))
+            # calcular LR
+            avg_length_window = np.mean(self.episode_lengths[-100:])
+            exp = -0.02 * avg_length_window - 2
+            learning_rate = 10 ** exp
+        else:
+            learning_rate = self.lr
 
         for batch in BatchSampler(SubsetRandomSampler(range(len(self.states))), batch_size, drop_last=False):
             states_batch = states[batch].numpy()

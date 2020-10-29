@@ -8,7 +8,7 @@ episode_length = results["episode_length"]
 
 plt.plot([i for i in range(0, len(episode_length))], episode_length)
 
-x_av = movingaverage(episode_length, 400)
+x_av = movingaverage(episode_length, 100)
 plt.plot([i for i in range(0, len(x_av))], x_av)
 
 
