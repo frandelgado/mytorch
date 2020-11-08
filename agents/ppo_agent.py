@@ -21,14 +21,14 @@ class PPOAgent(Agent):
 
         self.actor = Net(
             [
-                {"input_dim": 4, "output_dim": 50, "activation": "sigmoid"},
-                {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
+                {"input_dim": state_space, "output_dim": 50, "activation": "sigmoid"},
+                {"input_dim": 50, "output_dim": action_space, "activation": "softmax"},
             ],
             optimizer="adam"
         )
         self.critic = Net(
             [
-                {"input_dim": 4, "output_dim": 50, "activation": "sigmoid"},
+                {"input_dim": state_space, "output_dim": 50, "activation": "sigmoid"},
                 {"input_dim": 50, "output_dim": 1, "activation": "linear"},
             ],
             optimizer="adam"
@@ -43,7 +43,7 @@ class PPOAgent(Agent):
     def act(self, state):
         state = np.reshape(state, newshape=(self.state_space, -1))
         action_probs, _ = self.actor.full_forward_propagation(state)
-        action = np.random.choice(2, p=action_probs.squeeze())
+        action = np.random.choice(self.action_space, p=action_probs.squeeze())
         return action, action_probs[action]
 
     def store_transition(self, state, new_state, action, a_prob, reward):
@@ -87,23 +87,29 @@ class PPOAgent(Agent):
                 probs, actor_cache = self.actor.full_forward_propagation(state)
                 actor_entropy.append(-np.sum(np.log(probs) * probs))
                 action_prob = probs[action]
+
                 action_prob_ratio = action_prob/old_action_probs
                 surr = action_prob_ratio * advantage
 
-                if action_prob_ratio < 1 - self.clip_e:
+                if action_prob_ratio < (1 - self.clip_e):
                     clamp_prob = 1 - self.clip_e
-                elif action_prob_ratio > 1 + self.clip_e:
+                elif action_prob_ratio > (1 + self.clip_e):
                     clamp_prob = 1 + self.clip_e
                 else:
                     clamp_prob = action_prob_ratio
+
                 clipped_surr = clamp_prob * advantage
 
                 actor_loss.append(-np.minimum(surr, clipped_surr))
 
-                if action_prob_ratio < 1 - self.clip_e or action_prob_ratio > 1 + self.clip_e:
-                    actor_dLoss = 0
+                if surr < clipped_surr:
+                    actor_dLoss = 1/old_action_probs * advantage
                 else:
-                    actor_dLoss = 1/action_prob * advantage
+                    if action_prob_ratio < 1 - self.clip_e or action_prob_ratio > 1 + self.clip_e:
+                        actor_dLoss = 0
+                    else:
+                        actor_dLoss = 1/old_action_probs * advantage
+
                 actor_grads = self.actor.full_backward_propagation(actor_dLoss, actor_cache, action)
                 actor_grads_batch.append(actor_grads)
 

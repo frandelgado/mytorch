@@ -12,7 +12,7 @@ class VPGAgent(Agent):
 
     def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-3, gamma=0.9):
         # Config
-        self._adapt_lr_on_ep_len = False
+        self._adapt_lr_on_ep_len = True
 
         self.state_space = state_space
         self.action_space = action_space
@@ -22,8 +22,8 @@ class VPGAgent(Agent):
 
         self.net = Net(
             [
-                {"input_dim": 4, "output_dim": 50, "activation": "sigmoid"},
-                {"input_dim": 50, "output_dim": 2, "activation": "softmax"},
+                {"input_dim": 4, "output_dim": 10, "activation": "sigmoid"},
+                {"input_dim": 10, "output_dim": 2, "activation": "softmax"},
             ],
             optimizer="adam"
         )
