@@ -8,6 +8,18 @@ from nets.activations import relu, sigmoid, softmax, linear, relu_backward, sigm
 
 class Layer(ABC):
 
+    def __init__(self, input_dim, output_dim):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.store = {
+            "prevdW": np.zeros(shape=(output_dim, input_dim)),
+            "prevdb": np.zeros(shape=(output_dim, 1)),
+            "prevVnW": np.zeros(shape=(output_dim, input_dim)),
+            "prevVnb": np.zeros(shape=(output_dim, 1)),
+            'W': np.random.randn(output_dim, input_dim) * (1 / np.sqrt(input_dim)),
+            'b': np.random.randn(output_dim, 1) * (1 / np.sqrt(input_dim))
+        }
+
     def forward(self, A_prev, W_curr, b_curr):
         raise NotImplementedError
 
@@ -64,9 +76,3 @@ class Linear(Layer):
         return self.calculate_grads(A_prev, W_curr, dZ_curr)
 
 
-class Net:
-    def __init__(self):
-        self.layers = []
-
-    def forward(self):
-        pass

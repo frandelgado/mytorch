@@ -24,104 +24,41 @@ class Net:
         self.layers = []
         for architecture_layer in nn_architecture:
             layer = {
-                "sigmoid": layers.Sigmoid(),
-                "relu": layers.ReLu(),
-                "linear": layers.Linear(),
-                "softmax": layers.Softmax()
+                "sigmoid": layers.Sigmoid(architecture_layer["input_dim"], architecture_layer["output_dim"]),
+                "relu": layers.ReLu(architecture_layer["input_dim"], architecture_layer["output_dim"]),
+                "linear": layers.Linear(architecture_layer["input_dim"], architecture_layer["output_dim"]),
+                "softmax": layers.Softmax(architecture_layer["input_dim"], architecture_layer["output_dim"])
             }.get(architecture_layer["activation"])
             self.layers.append(layer)
-
-        self.params_values = self.init_layers()
-
-    def init_layers(self, seed=99):
-        np.random.seed(seed)
-        params_values = {}
-
-        for idx, layer in enumerate(self.nn_architecture):
-            layer_idx = idx + 1
-            layer_input_size = layer["input_dim"]
-            layer_output_size = layer["output_dim"]
-
-            if self._save_prev_grads:
-                params_values["prevdW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
-                params_values["prevdb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
-
-            if self._save_second_order:
-                params_values["prevVnW" + str(layer_idx)] = np.zeros(shape=(layer_output_size, layer_input_size))
-                params_values["prevVnb" + str(layer_idx)] = np.zeros(shape=(layer_output_size, 1))
-
-            params_values['W' + str(layer_idx)] = np.random.randn(
-                layer_output_size, layer_input_size) * (1 / np.sqrt(layer_input_size))
-            params_values['b' + str(layer_idx)] = np.random.randn(
-                layer_output_size, 1) * (1 / np.sqrt(layer_input_size))
-
-        return params_values
-
-    def single_layer_forward_propagation(self, A_prev, W_curr, b_curr, activation="relu"):
-        Z_curr = np.dot(W_curr, A_prev) + b_curr
-
-        if activation == "relu":
-            activation_func = relu
-        elif activation == "sigmoid":
-            activation_func = sigmoid
-        elif activation == "softmax":
-            activation_func = softmax
-        elif activation == "linear":
-            activation_func = linear
-        else:
-            raise Exception('Non-supported activation function')
-
-        return activation_func(Z_curr), Z_curr
 
     def full_forward_propagation(self, X):
         memory = {}
         A_curr = X
 
-        for idx, layer in enumerate(self.nn_architecture):
+        for idx, _ in enumerate(self.nn_architecture):
             layer_idx = idx + 1
             A_prev = A_curr
 
-            activation_function_curr = layer["activation"]
-            W_curr = self.params_values["W" + str(layer_idx)]
-            b_curr = self.params_values["b" + str(layer_idx)]
-            A_curr, Z_curr = self.layers[idx].forward(A_prev, W_curr, b_curr)
+            layer = self.layers[idx]
+
+            W_curr = layer.store["W"]
+            b_curr = layer.store["b"]
+            A_curr, Z_curr = layer.forward(A_prev, W_curr, b_curr)
 
             memory["A" + str(idx)] = A_prev
             memory["Z" + str(layer_idx)] = Z_curr
 
         return A_curr, memory
 
-    def single_layer_backward_propagation(self, dA_curr, W_curr, b_curr, Z_curr, A_prev, activation="relu",
-                                          action=None):
-        m = A_prev.shape[1]
-        # choose the appropriate activation function backward computation
-        if activation == "relu":
-            backward_activation_func = relu_backward
-        elif activation == "sigmoid":
-            backward_activation_func = sigmoid_backward
-        elif activation == "softmax":
-            backward_activation_func = softmax_backward
-        elif activation == "linear":
-            backward_activation_func = linear_backward
-        else:
-            raise Exception('Non-supported activation function')
-
-        dZ_curr = backward_activation_func(dA_curr, Z_curr, action=action)
-        dW_curr = np.dot(dZ_curr, A_prev.T) / m
-        db_curr = np.sum(dZ_curr, axis=1, keepdims=True) / m
-        dA_prev = np.dot(W_curr.T, dZ_curr)
-
-        return dA_prev, dW_curr, db_curr
-
     def full_backward_propagation(self, dLoss, cache, action=None):
         # Dictionary to accumulate the gradients
         grads_values = {}
         dA_prev = dLoss
 
-        for layer_idx_prev, layer in reversed(list(enumerate(self.nn_architecture))):
+        for layer_idx_prev, _ in reversed(list(enumerate(self.nn_architecture))):
             layer_idx_curr = layer_idx_prev + 1
-            activ_function_curr = layer["activation"]
 
+            layer = self.layers[layer_idx_prev]
             # Derivative of the activations with respect to the loss function for current layer
             dA_curr = dA_prev
 
@@ -130,11 +67,11 @@ class Net:
             # Z values for the current layer A_curr = activ(Z_curr) = activ((A_prev * W_curr) + b_curr)
             Z_curr = cache["Z" + str(layer_idx_curr)]
             # Weights of the current layer
-            W_curr = self.params_values["W" + str(layer_idx_curr)]
+            W_curr = layer.store["W"]
             # biases of the current layer
-            b_curr = self.params_values["b" + str(layer_idx_curr)]
+            b_curr = layer.store["b"]
             # Calculate dL/dA, dL/dW, dL/db
-            dA_prev, dW_curr, db_curr = self.layers[layer_idx_prev].backward(
+            dA_prev, dW_curr, db_curr = layer.backward(
                 dA_curr, W_curr, b_curr, Z_curr, A_prev, action=action
             )
 
@@ -153,42 +90,45 @@ class Net:
             self._update_adam(grads_values, learning_rate)
 
     def _update_momentum(self, grads_values, learning_rate):
-        for layer_idx, layer in enumerate(self.nn_architecture):
+        for layer_idx, _ in enumerate(self.nn_architecture):
+            layer = self.layers[layer_idx]
             layer_idx = layer_idx + 1
 
-            dW = grads_values["dW" + str(layer_idx)] + (0.7 * self.params_values["prevdW" + str(layer_idx)])
-            db = grads_values["db" + str(layer_idx)] + (0.7 * self.params_values["prevdb" + str(layer_idx)])
+            dW = grads_values["dW" + str(layer_idx)] + (0.7 * layer.store["prevdW"])
+            db = grads_values["db" + str(layer_idx)] + (0.7 * layer.store["prevdb"])
 
-            self.params_values["W" + str(layer_idx)] += learning_rate * dW
-            self.params_values["b" + str(layer_idx)] += learning_rate * db
+            layer.store["W"] += learning_rate * dW
+            layer.store["b"] += learning_rate * db
 
-            self.params_values["prevdW" + str(layer_idx)] = dW
-            self.params_values["prevdb" + str(layer_idx)] = db
+            layer.store["prevdW"] = dW
+            layer.store["prevdb"] = db
 
     def _update_rmsprop(self, grads_values, learning_rate):
 
-        for layer_idx, layer in enumerate(self.nn_architecture):
+        for layer_idx, _ in enumerate(self.nn_architecture):
+            layer = self.layers[layer_idx]
             layer_idx = layer_idx + 1
             beta = 0.9
 
             dW = grads_values["dW" + str(layer_idx)]
             db = grads_values["db" + str(layer_idx)]
 
-            VnW = beta * self.params_values["prevVnW" + str(layer_idx)] + (1 - beta) * np.square(dW)
-            Vnb = beta * self.params_values["prevVnb" + str(layer_idx)] + (1 - beta) * np.square(db)
+            VnW = beta * layer.store["prevVnW"] + (1 - beta) * np.square(dW)
+            Vnb = beta * layer.store["prevVnb"] + (1 - beta) * np.square(db)
 
-            self.params_values["prevVnW" + str(layer_idx)] = VnW
-            self.params_values["prevVnb" + str(layer_idx)] = Vnb
+            layer.store["prevVnW"] = VnW
+            layer.store["prevVnb"] = Vnb
 
             rmsprop_lrW = learning_rate / np.sqrt(VnW + 1e-8)
             rmsprop_lrb = learning_rate / np.sqrt(Vnb + 1e-8)
 
-            self.params_values["W" + str(layer_idx)] += rmsprop_lrW * dW
-            self.params_values["b" + str(layer_idx)] += rmsprop_lrb * db
+            layer.store["W"] += rmsprop_lrW * dW
+            layer.store["b"] += rmsprop_lrb * db
 
     def _update_adam(self, grads_values, learning_rate):
         self._step += 1
-        for layer_idx, layer in enumerate(self.nn_architecture):
+        for layer_idx, _ in enumerate(self.nn_architecture):
+            layer = self.layers[layer_idx]
             layer_idx = layer_idx + 1
             beta_2 = 0.9
             beta_1 = 0.9
@@ -196,17 +136,17 @@ class Net:
             dW = grads_values["dW" + str(layer_idx)]
             db = grads_values["db" + str(layer_idx)]
 
-            MnW = beta_1 * self.params_values["prevdW" + str(layer_idx)] + (1 - beta_2) * dW
-            Mnb = beta_1 * self.params_values["prevdb" + str(layer_idx)] + (1 - beta_2) * db
+            MnW = beta_1 * layer.store["prevdW"] + (1 - beta_2) * dW
+            Mnb = beta_1 * layer.store["prevdb"] + (1 - beta_2) * db
 
-            self.params_values["prevdW" + str(layer_idx)] = MnW
-            self.params_values["prevdb" + str(layer_idx)] = Mnb
+            layer.store["prevdW"] = MnW
+            layer.store["prevdb"] = Mnb
 
-            VnW = beta_2 * self.params_values["prevVnW" + str(layer_idx)] + (1 - beta_2) * np.square(dW)
-            Vnb = beta_2 * self.params_values["prevVnb" + str(layer_idx)] + (1 - beta_2) * np.square(db)
+            VnW = beta_2 * layer.store["prevVnW"] + (1 - beta_2) * np.square(dW)
+            Vnb = beta_2 * layer.store["prevVnb"] + (1 - beta_2) * np.square(db)
 
-            self.params_values["prevVnW" + str(layer_idx)] = VnW
-            self.params_values["prevVnb" + str(layer_idx)] = Vnb
+            layer.store["prevVnW"] = VnW
+            layer.store["prevVnb"] = Vnb
 
             MnW_hat = MnW / (1 - np.power(beta_1, self._step))
             Mnb_hat = Mnb / (1 - np.power(beta_1, self._step))
@@ -217,8 +157,8 @@ class Net:
             rmsprop_lrW = learning_rate / np.sqrt(VnW_hat + 1e-8)
             rmsprop_lrb = learning_rate / np.sqrt(Vnb_hat + 1e-8)
 
-            self.params_values["W" + str(layer_idx)] += rmsprop_lrW * MnW_hat
-            self.params_values["b" + str(layer_idx)] += rmsprop_lrb * Mnb_hat
+            layer.store["W"] += rmsprop_lrW * MnW_hat
+            layer.store["b"] += rmsprop_lrb * Mnb_hat
 
     def mean_grads(self, grads_values_batch, batch_size):
         grads_values_sum = {}
