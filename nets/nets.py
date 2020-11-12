@@ -1,5 +1,6 @@
 import numpy as np
 
+from nets import layers
 from nets.activations import relu, sigmoid, relu_backward, sigmoid_backward, softmax, softmax_backward, linear, \
     linear_backward
 
@@ -20,6 +21,16 @@ class Net:
 
         self.cost_history = []
         self.nn_architecture = nn_architecture
+        self.layers = []
+        for architecture_layer in nn_architecture:
+            layer = {
+                "sigmoid": layers.Sigmoid(),
+                "relu": layers.ReLu(),
+                "linear": layers.Linear(),
+                "softmax": layers.Softmax()
+            }.get(architecture_layer["activation"])
+            self.layers.append(layer)
+
         self.params_values = self.init_layers()
 
     def init_layers(self, seed=99):
@@ -73,7 +84,7 @@ class Net:
             activation_function_curr = layer["activation"]
             W_curr = self.params_values["W" + str(layer_idx)]
             b_curr = self.params_values["b" + str(layer_idx)]
-            A_curr, Z_curr = self.single_layer_forward_propagation(A_prev, W_curr, b_curr, activation_function_curr)
+            A_curr, Z_curr = self.layers[idx].forward(A_prev, W_curr, b_curr)
 
             memory["A" + str(idx)] = A_prev
             memory["Z" + str(layer_idx)] = Z_curr
@@ -123,8 +134,8 @@ class Net:
             # biases of the current layer
             b_curr = self.params_values["b" + str(layer_idx_curr)]
             # Calculate dL/dA, dL/dW, dL/db
-            dA_prev, dW_curr, db_curr = self.single_layer_backward_propagation(
-                dA_curr, W_curr, b_curr, Z_curr, A_prev, activ_function_curr, action=action
+            dA_prev, dW_curr, db_curr = self.layers[layer_idx_prev].backward(
+                dA_curr, W_curr, b_curr, Z_curr, A_prev, action=action
             )
 
             # Store the gradients for weights and biases (will be used for updates)
