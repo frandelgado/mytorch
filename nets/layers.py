@@ -12,16 +12,34 @@ class Layer(ABC):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.store = {
+            #TODO order and document the store
             "prevdW": np.zeros(shape=(output_dim, input_dim)),
             "prevdb": np.zeros(shape=(output_dim, 1)),
             "prevVnW": np.zeros(shape=(output_dim, input_dim)),
             "prevVnb": np.zeros(shape=(output_dim, 1)),
-            'W': np.random.randn(output_dim, input_dim) * (1 / np.sqrt(input_dim)),
-            'b': np.random.randn(output_dim, 1) * (1 / np.sqrt(input_dim))
+            "W": np.random.randn(output_dim, input_dim) * (1 / np.sqrt(input_dim)),
+            "b": np.random.randn(output_dim, 1) * (1 / np.sqrt(input_dim)),
+            # Activation on the forward pass
+            "A": None,
+            # Excitation (i.e. W.x) on the forward pass
+            "Z": None,
+            "dW": np.zeros(shape=(output_dim, input_dim)),
+            "db": np.zeros(shape=(output_dim, 1)),
         }
 
-    def forward(self, A_prev, W_curr, b_curr):
+    def forward(self, A_prev):
         raise NotImplementedError
+
+    def _forward(self, A_prev):
+        """
+        Helper function that does the common operation of all forward implementations
+        :param A_prev:
+        :return:
+        """
+        W_curr = self.store["W"]
+        b_curr = self.store["b"]
+        Z_curr = np.dot(W_curr, A_prev) + b_curr
+        return Z_curr
 
     def backward(self, dA_curr, W_curr, b_curr, Z_curr, A_prev, action=None):
         raise NotImplementedError
@@ -34,11 +52,16 @@ class Layer(ABC):
         dA_prev = np.dot(W_curr.T, dZ_curr)
         return dA_prev, dW_curr, db_curr
 
+    def mean_grads(self, batch_size):
+        self.store["dW"] /= batch_size
+        self.store["db"] /= batch_size
+
+
 
 class ReLu(Layer):
 
-    def forward(self, A_prev, W_curr, b_curr):
-        Z_curr = np.dot(W_curr, A_prev) + b_curr
+    def forward(self, A_prev):
+        Z_curr = self._forward(A_prev)
         return relu(Z_curr), Z_curr
 
     def backward(self, dA_curr, W_curr, b_curr, Z_curr, A_prev, action=None):
@@ -47,8 +70,8 @@ class ReLu(Layer):
 
 
 class Sigmoid(Layer):
-    def forward(self, A_prev, W_curr, b_curr):
-        Z_curr = np.dot(W_curr, A_prev) + b_curr
+    def forward(self, A_prev):
+        Z_curr = self._forward(A_prev)
         return sigmoid(Z_curr), Z_curr
 
     def backward(self, dA_curr, W_curr, b_curr, Z_curr, A_prev, action=None):
@@ -57,8 +80,8 @@ class Sigmoid(Layer):
 
 
 class Softmax(Layer):
-    def forward(self, A_prev, W_curr, b_curr):
-        Z_curr = np.dot(W_curr, A_prev) + b_curr
+    def forward(self, A_prev):
+        Z_curr = self._forward(A_prev)
         return softmax(Z_curr), Z_curr
 
     def backward(self, dA_curr, W_curr, b_curr, Z_curr, A_prev, action=None):
@@ -67,8 +90,8 @@ class Softmax(Layer):
 
 
 class Linear(Layer):
-    def forward(self, A_prev, W_curr, b_curr):
-        Z_curr = np.dot(W_curr, A_prev) + b_curr
+    def forward(self, A_prev):
+        Z_curr = self._forward(A_prev)
         return linear(Z_curr), Z_curr
 
     def backward(self, dA_curr, W_curr, b_curr, Z_curr, A_prev, action=None):

@@ -36,7 +36,7 @@ class VPGAgent(Agent):
 
     def act(self, state):
         state = np.reshape(state, newshape=(self.state_space, -1))
-        action_probs, _ = self.net.full_forward_propagation(state)
+        action_probs = self.net.forward(state)
         action = np.random.choice(2, p=action_probs.squeeze())
         return action, action_probs[action]
 
@@ -76,25 +76,22 @@ class VPGAgent(Agent):
             states_batch = states[batch].numpy()
             actions_batch = actions[batch].numpy()
             rewards_batch = rewards[batch]
-            grads_values_batch = []
             loss = []
             entropy = []
             for state, action, reward in zip(states_batch, actions_batch, rewards_batch):
                 state = state.reshape((-1, 1))
-                probs, cache = self.net.full_forward_propagation(state)
+                probs = self.net.forward(state)
                 probs = probs.squeeze() + 1e-8
                 entropy.append(-np.sum(np.log(probs) * probs))
                 action_prob = probs[action]
                 loss.append(-(np.log(action_prob) * reward))
                 dLoss = 1/action_prob * reward
-                grads_values = self.net.full_backward_propagation(dLoss, cache, action)
-                grads_values_batch.append(grads_values)
+                self.net.backward(dLoss, action)
 
             losses.append(np.mean(loss))
             entropies.append(np.mean(entropy))
-            grads_values_mean = self.net.mean_grads(grads_values_batch, batch_size)
-
-            self.net.update(grads_values_mean, learning_rate)
+            self.net.mean_grads(batch_size)
+            self.net.update(learning_rate)
         self._clear_buffers()
 
         return np.mean(losses), np.mean(entropies), learning_rate

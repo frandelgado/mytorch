@@ -42,7 +42,7 @@ class PPOAgent(Agent):
 
     def act(self, state):
         state = np.reshape(state, newshape=(self.state_space, -1))
-        action_probs, _ = self.actor.full_forward_propagation(state)
+        action_probs = self.actor.forward(state)
         action = np.random.choice(self.action_space, p=action_probs.squeeze())
         return action, action_probs[action]
 
@@ -75,16 +75,14 @@ class PPOAgent(Agent):
             actions_batch = actions[batch].numpy()
             old_action_probs = all_old_probs[batch].numpy()
             rewards_batch = rewards[batch]
-            actor_grads_batch = []
-            critic_grads_batch = []
 
             actor_loss = []
             actor_entropy = []
             for state, action, reward, old_action_probs in zip(states_batch, actions_batch, rewards_batch, old_action_probs):
                 state = state.reshape((-1, 1))
-                V, critic_cache = self.critic.full_forward_propagation(state)
+                V = self.critic.forward(state)
                 advantage = reward - V
-                probs, actor_cache = self.actor.full_forward_propagation(state)
+                probs = self.actor.forward(state)
                 actor_entropy.append(-np.sum(np.log(probs) * probs))
                 action_prob = probs[action]
 
@@ -110,21 +108,19 @@ class PPOAgent(Agent):
                     else:
                         actor_dLoss = 1/old_action_probs * advantage
 
-                actor_grads = self.actor.full_backward_propagation(actor_dLoss, actor_cache, action)
-                actor_grads_batch.append(actor_grads)
+                self.actor.backward(actor_dLoss, action)
 
                 critic_loss = np.square(advantage)
                 critic_dloss = 2 * advantage
-                critic_grads = self.critic.full_backward_propagation(critic_dloss, critic_cache, action)
-                critic_grads_batch.append(critic_grads)
+                self.critic.backward(critic_dloss, action)
 
-            actor_grads_values_mean = self.actor.mean_grads(actor_grads_batch, batch_size)
-            self.actor.update(actor_grads_values_mean, self.a_lr)
+            self.actor.mean_grads(batch_size)
+            self.actor.update(self.a_lr)
             actor_losses.append(np.mean(actor_loss))
             actor_entropies.append(np.mean(actor_entropy))
 
-            critic_grads_values_mean = self.critic.mean_grads(critic_grads_batch, batch_size)
-            self.critic.update(critic_grads_values_mean, self.c_lr)
+            self.critic.mean_grads(batch_size)
+            self.critic.update(self.c_lr)
 
         self._clear_buffers()
         return np.mean(actor_losses), np.mean(actor_entropies), self.a_lr

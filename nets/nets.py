@@ -31,41 +31,28 @@ class Net:
             }.get(architecture_layer["activation"])
             self.layers.append(layer)
 
-    def full_forward_propagation(self, X):
-        memory = {}
+    def forward(self, X):
         A_curr = X
-
-        for idx, _ in enumerate(self.nn_architecture):
-            layer_idx = idx + 1
+        
+        for layer in self.layers:
+            
             A_prev = A_curr
-
-            layer = self.layers[idx]
-
-            W_curr = layer.store["W"]
-            b_curr = layer.store["b"]
-            A_curr, Z_curr = layer.forward(A_prev, W_curr, b_curr)
-
-            memory["A" + str(idx)] = A_prev
-            memory["Z" + str(layer_idx)] = Z_curr
-
-        return A_curr, memory
-
-    def full_backward_propagation(self, dLoss, cache, action=None):
-        # Dictionary to accumulate the gradients
-        grads_values = {}
+            A_curr, Z_curr = layer.forward(A_prev)
+            layer.store["Z"] = Z_curr
+            layer.store["A"] = A_prev
+        
+        return A_curr
+    
+    def backward(self, dLoss, action=None):
         dA_prev = dLoss
-
-        for layer_idx_prev, _ in reversed(list(enumerate(self.nn_architecture))):
-            layer_idx_curr = layer_idx_prev + 1
-
-            layer = self.layers[layer_idx_prev]
-            # Derivative of the activations with respect to the loss function for current layer
+        
+        for layer in reversed(self.layers):
             dA_curr = dA_prev
-
             # Activation output values for the previous layer
-            A_prev = cache["A" + str(layer_idx_prev)]
+            A_prev = layer.store["A"]
             # Z values for the current layer A_curr = activ(Z_curr) = activ((A_prev * W_curr) + b_curr)
-            Z_curr = cache["Z" + str(layer_idx_curr)]
+            Z_curr = layer.store["Z"]
+
             # Weights of the current layer
             W_curr = layer.store["W"]
             # biases of the current layer
@@ -76,26 +63,22 @@ class Net:
             )
 
             # Store the gradients for weights and biases (will be used for updates)
-            grads_values["dW" + str(layer_idx_curr)] = dW_curr
-            grads_values["db" + str(layer_idx_curr)] = db_curr
+            layer.store["dW"] += dW_curr
+            layer.store["db"] += db_curr
 
-        return grads_values
-
-    def update(self, grads_values, learning_rate):
+    def update(self, learning_rate):
         if self.optimizer == "momentum":
-            self._update_momentum(grads_values, learning_rate)
+            self._update_momentum(learning_rate)
         elif self.optimizer == "rmsprop":
-            self._update_rmsprop(grads_values, learning_rate)
+            self._update_rmsprop(learning_rate)
         elif self.optimizer == "adam":
-            self._update_adam(grads_values, learning_rate)
+            self._update_adam(learning_rate)
 
-    def _update_momentum(self, grads_values, learning_rate):
-        for layer_idx, _ in enumerate(self.nn_architecture):
-            layer = self.layers[layer_idx]
-            layer_idx = layer_idx + 1
+    def _update_momentum(self, learning_rate):
 
-            dW = grads_values["dW" + str(layer_idx)] + (0.7 * layer.store["prevdW"])
-            db = grads_values["db" + str(layer_idx)] + (0.7 * layer.store["prevdb"])
+        for layer in self.layers:
+            dW = layer.store["dW"] + (0.7 * layer.store["prevdW"])
+            db = layer.store["db"] + (0.7 * layer.store["prevdb"])
 
             layer.store["W"] += learning_rate * dW
             layer.store["b"] += learning_rate * db
@@ -103,15 +86,13 @@ class Net:
             layer.store["prevdW"] = dW
             layer.store["prevdb"] = db
 
-    def _update_rmsprop(self, grads_values, learning_rate):
+    def _update_rmsprop(self, learning_rate):
 
-        for layer_idx, _ in enumerate(self.nn_architecture):
-            layer = self.layers[layer_idx]
-            layer_idx = layer_idx + 1
+        for layer in self.layers:
             beta = 0.9
 
-            dW = grads_values["dW" + str(layer_idx)]
-            db = grads_values["db" + str(layer_idx)]
+            dW = layer.store["dW"]
+            db = layer.store["db"]
 
             VnW = beta * layer.store["prevVnW"] + (1 - beta) * np.square(dW)
             Vnb = beta * layer.store["prevVnb"] + (1 - beta) * np.square(db)
@@ -125,16 +106,14 @@ class Net:
             layer.store["W"] += rmsprop_lrW * dW
             layer.store["b"] += rmsprop_lrb * db
 
-    def _update_adam(self, grads_values, learning_rate):
+    def _update_adam(self, learning_rate):
         self._step += 1
-        for layer_idx, _ in enumerate(self.nn_architecture):
-            layer = self.layers[layer_idx]
-            layer_idx = layer_idx + 1
+        for layer in self.layers:
             beta_2 = 0.9
             beta_1 = 0.9
 
-            dW = grads_values["dW" + str(layer_idx)]
-            db = grads_values["db" + str(layer_idx)]
+            dW = layer.store["dW"]
+            db = layer.store["db"]
 
             MnW = beta_1 * layer.store["prevdW"] + (1 - beta_2) * dW
             Mnb = beta_1 * layer.store["prevdb"] + (1 - beta_2) * db
@@ -160,19 +139,6 @@ class Net:
             layer.store["W"] += rmsprop_lrW * MnW_hat
             layer.store["b"] += rmsprop_lrb * Mnb_hat
 
-    def mean_grads(self, grads_values_batch, batch_size):
-        grads_values_sum = {}
-        for layer_idx, layer in enumerate(self.nn_architecture):
-            layer_idx = layer_idx + 1
-            for grad_values in grads_values_batch:
-                if not "dW" + str(layer_idx) in grads_values_sum:
-                    grads_values_sum["dW" + str(layer_idx)] = grad_values["dW" + str(layer_idx)]
-                    grads_values_sum["db" + str(layer_idx)] = grad_values["db" + str(layer_idx)]
-                else:
-                    grads_values_sum["dW" + str(layer_idx)] += grad_values["dW" + str(layer_idx)]
-                    grads_values_sum["db" + str(layer_idx)] += grad_values["db" + str(layer_idx)]
-
-            grads_values_sum["dW" + str(layer_idx)] /= batch_size
-            grads_values_sum["db" + str(layer_idx)] /= batch_size
-
-        return grads_values_sum
+    def mean_grads(self, batch_size):
+        for layer in self.layers:
+            layer.mean_grads(batch_size)
