@@ -5,7 +5,9 @@ import torch
 from torch.utils.data import BatchSampler, SubsetRandomSampler
 
 from agents import Agent
+from nets.layers import Sigmoid, Softmax, Linear
 from nets.nets import Net
+from nets.optim import Adam
 
 
 class PPOAgent(Agent):
@@ -20,18 +22,20 @@ class PPOAgent(Agent):
         self.clip_e = clip_e
 
         self.actor = Net(
-            [
-                {"input_dim": state_space, "output_dim": 50, "activation": "sigmoid"},
-                {"input_dim": 50, "output_dim": action_space, "activation": "softmax"},
+            layers=[
+                Sigmoid(state_space, a_hidden),
+                Softmax(a_hidden, action_space)
             ],
-            optimizer="adam"
+            optimizer=Adam(),
+            lr=a_lr,
         )
         self.critic = Net(
-            [
-                {"input_dim": state_space, "output_dim": 50, "activation": "sigmoid"},
-                {"input_dim": 50, "output_dim": 1, "activation": "linear"},
+            layers=[
+                Sigmoid(state_space, c_hidden),
+                Linear(c_hidden, 1)
             ],
-            optimizer="adam"
+            optimizer=Adam(),
+            lr=c_lr,
         )
 
         self.states = []
@@ -115,12 +119,12 @@ class PPOAgent(Agent):
                 self.critic.backward(critic_dloss, action)
 
             self.actor.mean_grads(batch_size)
-            self.actor.update(self.a_lr)
+            self.actor.update()
             actor_losses.append(np.mean(actor_loss))
             actor_entropies.append(np.mean(actor_entropy))
 
             self.critic.mean_grads(batch_size)
-            self.critic.update(self.c_lr)
+            self.critic.update()
 
         self._clear_buffers()
         return np.mean(actor_losses), np.mean(actor_entropies), self.a_lr

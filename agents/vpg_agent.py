@@ -5,12 +5,14 @@ import torch
 from torch.utils.data import BatchSampler, SubsetRandomSampler
 
 from agents import Agent
+from nets.layers import Sigmoid, Softmax
 from nets.nets import Net
+from nets.optim import Adam
 
 
 class VPGAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, hidden=50, lr=1e-3, gamma=0.9):
+    def __init__(self, state_space: int, action_space: int, hidden=10, lr=1e-3, gamma=0.9):
         # Config
         self._adapt_lr_on_ep_len = True
 
@@ -19,13 +21,14 @@ class VPGAgent(Agent):
         self.lr = lr
         self.gamma = gamma
         self.episode_lengths = []
-
+        
         self.net = Net(
-            [
-                {"input_dim": 4, "output_dim": 10, "activation": "sigmoid"},
-                {"input_dim": 10, "output_dim": 2, "activation": "softmax"},
-            ],
-            optimizer="adam"
+            layers=[
+                Sigmoid(state_space, hidden),
+                Softmax(hidden, action_space)
+            ], 
+            optimizer=Adam(),
+            lr=lr,
         )
 
         self.states = []
@@ -63,6 +66,7 @@ class VPGAgent(Agent):
         losses = []
         entropies = []
 
+        # Deprecated (LR is now fixed within the net)
         if self._adapt_lr_on_ep_len:
             self.episode_lengths.append(len(self.rewards))
             # calcular LR
@@ -91,10 +95,10 @@ class VPGAgent(Agent):
             losses.append(np.mean(loss))
             entropies.append(np.mean(entropy))
             self.net.mean_grads(batch_size)
-            self.net.update(learning_rate)
+            self.net.update()
         self._clear_buffers()
 
-        return np.mean(losses), np.mean(entropies), learning_rate
+        return np.mean(losses), np.mean(entropies), self.lr
 
     def _clear_buffers(self):
         self.states = []

@@ -16,7 +16,7 @@ results = {
     "entropy": [],
     "learning_rate": [],
 }
-agent = VPGAgent(4, 2)
+agent = PPOAgent(4, 2)
 i_episode = 0
 
 mean_losses = []
