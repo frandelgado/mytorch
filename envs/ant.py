@@ -4,7 +4,7 @@ import gym
 import pybulletgym  # register PyBullet enviroments with open ai gym
 
 
-from agents.ant.ppo_agent import PPOAgent
+from agents.ant.ppo_gaussian_agent import PPOAgent
 from agents.pytoch_nn_agent import PytorchNNAgent
 from agents.vpg_agent import VPGAgent
 

@@ -1,0 +1,123 @@
+import pickle
+
+import numpy as np
+
+import gym
+import pybulletgym  # register PyBullet enviroments with open ai gym
+
+from agents.ppo_agent import PPOAgent
+from agents.pytoch_nn_agent import PytorchNNAgent
+from agents.vpg_agent import VPGAgent
+
+env = gym.make("AntPyBulletEnv-v0")
+
+results = {
+    "loss":             np.zeros(8,),
+    "episode_length":   np.zeros(shape=(1,)),
+    "entropy":          np.zeros(8,),
+    "learning_rate":    np.zeros(8,),
+    "returns":          np.zeros(shape=(1,))
+}
+action_heads = [
+    PPOAgent(28, 4),
+    PPOAgent(28, 4),
+    PPOAgent(28, 4),
+    PPOAgent(28, 4),
+    PPOAgent(28, 4),
+    PPOAgent(28, 4),
+    PPOAgent(28, 4),
+    PPOAgent(28, 4),
+]
+
+i_episode = 0
+
+
+def discretize_action(a: int):
+    if a == 0:
+        return -1
+    if a == 1:
+        return -0.5
+    if a == 2:
+        return 0.5
+    if a == 3:
+        return 1
+    raise ValueError
+
+
+# Statistics
+mean_losses             = np.zeros(shape=(8,), dtype=object)
+mean_entropies          = np.zeros(shape=(8,), dtype=object)
+learning_rates          = np.zeros(shape=(8,), dtype=object)
+mean_episode_lengths    = np.zeros(shape=(1,), dtype=object)
+returns                 = np.zeros(shape=(1,), dtype=object)
+mean_episode_lengths[0] = []
+returns[0]              = []
+for i in range(8):
+    mean_losses[i]          = []
+    mean_entropies[i]       = []
+    learning_rates[i]       = []
+
+while True:
+    observation = env.reset()
+    episode_length = 0
+
+
+    # Allocate space for action
+    action      = np.zeros(shape=(8,))
+    raw_action  = np.zeros(shape=(8,))
+    action_prob = np.zeros(shape=(8,))
+
+    # Return statistic
+    ret                      = 0
+    base_discount_factor    = 0.99
+    discount_factor         = 0.99
+    # Episode loop
+    print(f"Starting episode {i_episode}")
+    for timestep in range(1024):
+        prev_obs = observation
+        # Collect action vector from action heads
+        for i, head in enumerate(action_heads):
+            head_action, head_action_prob   = head.act(prev_obs)
+            raw_action[i]                   = head_action
+            action[i]                       = discretize_action(head_action)
+            action_prob[i]                  = head_action_prob
+        # Act
+        observation, reward, done, _ = env.step(action)
+        # Accumulate return statistic
+        ret += reward * discount_factor
+        discount_factor *= base_discount_factor
+        if done:
+            break
+        # Store transitions for each of the action heads
+        for i, head in enumerate(action_heads):
+            head.store_transition(prev_obs, observation, raw_action[i], action_prob[i], reward)
+        episode_length = timestep
+
+    for i, action_head in enumerate(action_heads):
+        loss_mean, entropy_mean, learning_rate = action_head.train(batch_size=64)
+        mean_losses[i]          .append(loss_mean)
+        mean_entropies[i]       .append(entropy_mean)
+        learning_rates[i]       .append(learning_rate)
+
+    mean_episode_lengths[0] .append(episode_length)
+    returns[0].append(ret)
+
+    if i_episode % 10 == 0:
+        results["loss"] = mean_losses
+        results["entropy"] = mean_entropies
+        results["episode_length"] = mean_episode_lengths
+        results["learning_rate"] = learning_rates
+        results["returns"] = returns
+        with open("../pickles/results.p", "wb") as file:
+            pickle.dump(results, file)
+            print(f"Saved results for episode {i_episode}")
+
+    # Save agent
+    if i_episode % 500 == 0:
+        with open(f"../pickles/ant_action_heads_episode_{i_episode}.p", "wb") as f:
+            pickle.dump(action_heads, f)
+
+    print(f"Finished episode {i_episode}, total return: {ret}")
+    i_episode += 1
+
+env.close()

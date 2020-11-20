@@ -11,7 +11,7 @@ from nets.nets import Net
 class PPOAgent(Agent):
 
     def __init__(self, state_space: int, action_space: int, a_hidden=50, c_hidden=50,
-                 a_lr=3e-4, c_lr=3e-3, gamma=0.9, clip_e=0.2, categorical=True, log_std=None):
+                 a_lr=3e-3, c_lr=3e-3, gamma=0.9, clip_e=0.2, categorical=True, log_std=None):
         self.a_lr = a_lr
         self.c_lr = c_lr
         self.state_space = state_space

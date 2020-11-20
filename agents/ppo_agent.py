@@ -5,15 +5,15 @@ import torch
 from torch.utils.data import BatchSampler, SubsetRandomSampler
 
 from agents import Agent
-from nets.layers import Sigmoid, Softmax, Linear
+from nets.layers import Sigmoid, Softmax, Linear, ReLu
 from nets.nets import Net
 from nets.optim import Adam
 
 
 class PPOAgent(Agent):
 
-    def __init__(self, state_space: int, action_space: int, a_hidden=50, c_hidden=50,
-                 a_lr=1e-3, c_lr=3e-3, gamma=0.9, clip_e=0.2):
+    def __init__(self, state_space: int, action_space: int, a_hidden=20, c_hidden=20,
+                 a_lr=1e-3, c_lr=1e-3, gamma=0.99, clip_e=0.1):
         self.a_lr = a_lr
         self.c_lr = c_lr
         self.state_space = state_space
@@ -23,16 +23,16 @@ class PPOAgent(Agent):
 
         self.actor = Net(
             layers=[
-                Sigmoid(state_space, a_hidden),
-                Softmax(a_hidden, action_space)
+                ReLu(state_space,    a_hidden),
+                Softmax(a_hidden,    action_space)
             ],
             optimizer=Adam(),
             lr=a_lr,
         )
         self.critic = Net(
             layers=[
-                Sigmoid(state_space, c_hidden),
-                Linear(c_hidden, 1)
+                ReLu(state_space,    c_hidden),
+                Linear(c_hidden,     1)
             ],
             optimizer=Adam(),
             lr=c_lr,
@@ -87,7 +87,7 @@ class PPOAgent(Agent):
                 V = self.critic.forward(state)
                 advantage = reward - V
                 probs = self.actor.forward(state)
-                actor_entropy.append(-np.sum(np.log(probs) * probs))
+                actor_entropy.append(-np.sum(np.log2(probs) * probs))
                 action_prob = probs[action]
 
                 action_prob_ratio = action_prob/old_action_probs
