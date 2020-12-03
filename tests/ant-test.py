@@ -13,13 +13,15 @@ def discretize_action(a: int):
     if a == 1:
         return -0.5
     if a == 2:
-        return 0.5
+        return 0
     if a == 3:
+        return 0.5
+    if a == 4:
         return 1
     raise ValueError
 
 
-action_heads = pickle.load(open("../pickles/ant_action_heads_episode_500.p", "rb"))
+action_heads = pickle.load(open("../pickles/bac2/ant_action_heads_episode_29000.p", "rb"))
 
 env = gym.make("AntPyBulletEnv-v0")
 env.render()

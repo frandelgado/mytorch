@@ -11,26 +11,57 @@ from agents.vpg_agent import VPGAgent
 
 env = gym.make("AntPyBulletEnv-v0")
 
-results = {
-    "loss":             np.zeros(8,),
-    "episode_length":   np.zeros(shape=(1,)),
-    "entropy":          np.zeros(8,),
-    "learning_rate":    np.zeros(8,),
-    "returns":          np.zeros(shape=(1,))
-}
-action_heads = [
-    PPOAgent(28, 4),
-    PPOAgent(28, 4),
-    PPOAgent(28, 4),
-    PPOAgent(28, 4),
-    PPOAgent(28, 4),
-    PPOAgent(28, 4),
-    PPOAgent(28, 4),
-    PPOAgent(28, 4),
-]
 
-i_episode = 0
+def trim_results(res, max_len):
+    for idx in range(len(res["loss"])):
+        res["loss"][idx]            = res["loss"][idx][:max_len]
 
+    for idx in range(len(res["entropy"])):
+        res["entropy"][idx]         = res["entropy"][idx][:max_len]
+
+    for idx in range(len(res["learning_rate"])):
+        res["learning_rate"][idx]   = res["learning_rate"][idx][:max_len]
+
+    res["episode_length"][0]    = res["episode_length"][0][:max_len]
+    res["returns"][0]           = res["returns"][0][:max_len]
+
+
+resume_from_episode = None
+if resume_from_episode is not None:
+    with open(f"../pickles/bac2/ant_action_heads_episode_{resume_from_episode}.p", "rb") as f:
+        action_heads = pickle.load(f)
+    with open("../pickles/bac2/results.p", "rb") as f:
+        results = pickle.load(f)
+        trim_results(results, resume_from_episode)
+    i_episode = resume_from_episode
+else:
+    results = {
+        "loss":             np.zeros(shape=(8,), dtype=object),
+        "entropy":          np.zeros(shape=(8,), dtype=object),
+        "learning_rate":    np.zeros(shape=(8,), dtype=object),
+        "episode_length":   np.zeros(shape=(1,), dtype=object),
+        "returns":          np.zeros(shape=(1,), dtype=object),
+    }
+    results["episode_length"][0] = []
+    results["returns"][0] = []
+    for i in range(8):
+        results["loss"][i] = []
+        results["entropy"][i] = []
+        results["learning_rate"][i] = []
+
+    action_heads = [
+        PPOAgent(28, 5),
+        PPOAgent(28, 5),
+        PPOAgent(28, 5),
+        PPOAgent(28, 5),
+        PPOAgent(28, 5),
+        PPOAgent(28, 5),
+        PPOAgent(28, 5),
+        PPOAgent(28, 5),
+    ]
+    i_episode = 0
+
+print("loaded agent")
 
 def discretize_action(a: int):
     if a == 0:
@@ -38,29 +69,17 @@ def discretize_action(a: int):
     if a == 1:
         return -0.5
     if a == 2:
-        return 0.5
+        return 0
     if a == 3:
+        return 0.5
+    if a == 4:
         return 1
     raise ValueError
 
 
-# Statistics
-mean_losses             = np.zeros(shape=(8,), dtype=object)
-mean_entropies          = np.zeros(shape=(8,), dtype=object)
-learning_rates          = np.zeros(shape=(8,), dtype=object)
-mean_episode_lengths    = np.zeros(shape=(1,), dtype=object)
-returns                 = np.zeros(shape=(1,), dtype=object)
-mean_episode_lengths[0] = []
-returns[0]              = []
-for i in range(8):
-    mean_losses[i]          = []
-    mean_entropies[i]       = []
-    learning_rates[i]       = []
-
 while True:
     observation = env.reset()
     episode_length = 0
-
 
     # Allocate space for action
     action      = np.zeros(shape=(8,))
@@ -95,19 +114,14 @@ while True:
 
     for i, action_head in enumerate(action_heads):
         loss_mean, entropy_mean, learning_rate = action_head.train(batch_size=64)
-        mean_losses[i]          .append(loss_mean)
-        mean_entropies[i]       .append(entropy_mean)
-        learning_rates[i]       .append(learning_rate)
+        results["loss"][i]          .append(loss_mean)
+        results["entropy"][i]       .append(entropy_mean)
+        results["learning_rate"][i] .append(learning_rate)
 
-    mean_episode_lengths[0] .append(episode_length)
-    returns[0].append(ret)
+    results["episode_length"][0]    .append(episode_length)
+    results["returns"][0]           .append(ret)
 
-    if i_episode % 10 == 0:
-        results["loss"] = mean_losses
-        results["entropy"] = mean_entropies
-        results["episode_length"] = mean_episode_lengths
-        results["learning_rate"] = learning_rates
-        results["returns"] = returns
+    if i_episode % 500 == 0:
         with open("../pickles/results.p", "wb") as file:
             pickle.dump(results, file)
             print(f"Saved results for episode {i_episode}")
