@@ -7,7 +7,7 @@ from torch.utils.data import BatchSampler, SubsetRandomSampler
 from agents import Agent
 from nets.layers import Sigmoid, Softmax
 from nets.nets import Net
-from nets.optim import Adam
+from nets.optim import Adam, RMSProp, Momentum
 
 
 class VPGAgent(Agent):

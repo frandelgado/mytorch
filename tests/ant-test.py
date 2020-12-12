@@ -21,7 +21,7 @@ def discretize_action(a: int):
     raise ValueError
 
 
-action_heads = pickle.load(open("../pickles/bac2/ant_action_heads_episode_29000.p", "rb"))
+action_heads = pickle.load(open("../pickles/bac2/ant_action_heads_episode_10000.p", "rb"))
 
 env = gym.make("AntPyBulletEnv-v0")
 env.render()
