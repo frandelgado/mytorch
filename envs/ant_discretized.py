@@ -1,6 +1,8 @@
+import os
 import pickle
 
 import numpy as np
+from configed_logging import log
 
 import gym
 import pybulletgym  # register PyBullet enviroments with open ai gym
@@ -28,9 +30,9 @@ def trim_results(res, max_len):
 
 resume_from_episode = None
 if resume_from_episode is not None:
-    with open(f"../pickles/bac2/ant_action_heads_episode_{resume_from_episode}.p", "rb") as f:
+    with open(f"../pickles/ant/ant_action_heads_episode_{resume_from_episode}.p", "rb") as f:
         action_heads = pickle.load(f)
-    with open("../pickles/bac2/results.p", "rb") as f:
+    with open("../pickles/ant/results.p", "rb") as f:
         results = pickle.load(f)
         trim_results(results, resume_from_episode)
     i_episode = resume_from_episode
@@ -122,14 +124,20 @@ while True:
     results["returns"][0]           .append(ret)
 
     if i_episode % 500 == 0:
-        with open("../pickles/results.p", "wb") as file:
+        fname = "../pickles/ant_no_joints_cost/results.p"
+        if os.path.isfile(fname):
+            log.error(f"file {fname} already exists. Exiting")
+        with open(fname, "wb") as file:
             pickle.dump(results, file)
             print(f"Saved results for episode {i_episode}")
 
     # Save agent
     if i_episode % 500 == 0:
-        with open(f"../pickles/ant_action_heads_episode_{i_episode}.p", "wb") as f:
-            pickle.dump(action_heads, f)
+        fname = f"../pickles/ant_action_heads_episode_{i_episode}.p"
+        if os.path.isfile(fname):
+            log.error(f"file {fname} already exists. Exiting")
+        with open(fname, "wb") as file:
+            pickle.dump(action_heads, file)
 
     print(f"Finished episode {i_episode}, total return: {ret}")
     i_episode += 1

@@ -3,8 +3,8 @@ import pickle
 
 from graphs.utils import movingaverage
 
-results = pickle.load(open("../pickles/results.p", "rb"))
-episode_length = results["episode_length"]
+results = pickle.load(open("../pickles/ant_no_joints_cost/results.p", "rb"))
+episode_length = results["episode_length"][0]
 
 plt.plot([i for i in range(0, len(episode_length))], episode_length)
 

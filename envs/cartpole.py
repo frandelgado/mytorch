@@ -61,7 +61,7 @@ def cartpole(to_file=True, episodes=None):
             log.info(f"Finished episode {i_episode}")
         if to_file:
             if i_episode % 100 == 0:
-                with open("../pickles/results.p", "wb") as file:
+                with open("../pickles/ant_no_joints_cost/results.p", "wb") as file:
                     pickle.dump(results, file)
             if i_episode % 1000 == 0:
                 agent.save(i_episode)

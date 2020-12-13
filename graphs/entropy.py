@@ -6,7 +6,7 @@ from graphs.utils import movingaverage
 
 dims            = 8
 window_size     = 50
-pickle_file     = "../pickles/results.p"
+pickle_file     = "../pickles/ant_no_joints_cost/results.p"
 
 results = pickle.load(open(pickle_file, "rb"))
 entropy = results["entropy"]

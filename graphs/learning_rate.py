@@ -3,7 +3,7 @@ import pickle
 
 from graphs.utils import movingaverage
 
-results = pickle.load(open("../pickles/results.p", "rb"))
+results = pickle.load(open("../pickles/ant_no_joints_cost/results.p", "rb"))
 learning_rate = results["learning_rate"]
 
 plt.plot([i for i in range(0, len(learning_rate))], learning_rate)

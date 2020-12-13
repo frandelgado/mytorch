@@ -48,7 +48,7 @@ while True:
         results["episode_length"] = mean_episode_lengths
         if i_episode % 10000 == 0:
             agent.save(i_episode)
-        with open("../pickles/results.p", "wb") as file:
+        with open("../pickles/ant_no_joints_cost/results.p", "wb") as file:
             pickle.dump(results, file)
 
     i_episode += 1
