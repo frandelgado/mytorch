@@ -10,7 +10,7 @@ def ant_etl(runs=30, agent_type="ant"):
     x = []
     means = []
     stds = []
-    for save in range(0, 14500, 500):
+    for save in range(0, 30000, 500):
         x.append(save)
         distances = []
         log.info(f"starting tests for save {save}")
@@ -38,4 +38,11 @@ def multi_etl(agent_types):
 
 
 if __name__ == '__main__':
-    multi_etl(agent_types=["ant", "ant_no_electricity_cost", "ant_no_joints_cost", "ant_no_electricity_no_joints"])
+    multi_etl(
+        agent_types=[
+            "ant",
+            # "ant_no_electricity_cost",
+            # "ant_no_joints_cost2",
+            # "ant_no_electricity_no_joints",
+        ]
+    )

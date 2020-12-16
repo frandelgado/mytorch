@@ -23,7 +23,7 @@ class PPOAgent(Agent):
 
         self.actor = Net(
             layers=[
-                ReLu(state_space,    a_hidden),
+                Sigmoid(state_space,    a_hidden),
                 Softmax(a_hidden,    action_space)
             ],
             optimizer=Adam(),
@@ -31,7 +31,7 @@ class PPOAgent(Agent):
         )
         self.critic = Net(
             layers=[
-                ReLu(state_space,    c_hidden),
+                Sigmoid(state_space,    c_hidden),
                 Linear(c_hidden,     1)
             ],
             optimizer=Adam(),

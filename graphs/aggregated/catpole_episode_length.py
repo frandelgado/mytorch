@@ -3,7 +3,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
-data = pickle.load(open("../../etl/store/etl_cartpole/vpg_adam.p", "rb"))
+data = pickle.load(open("../../etl/store/etl_cartpole/ppo_adam2.p", "rb"))
 aggregated = []
 for datum in data:
     aggregated.append(datum["entropy"])

@@ -124,7 +124,7 @@ while True:
     results["returns"][0]           .append(ret)
 
     if i_episode % 500 == 0:
-        fname = "../pickles/ant_no_joints_cost/results.p"
+        fname = "../pickles/results.p"
         if os.path.isfile(fname):
             log.error(f"file {fname} already exists. Exiting")
         with open(fname, "wb") as file:
